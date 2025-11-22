@@ -1,12 +1,10 @@
 use crate::feed::Article;
 use crate::image::process_images;
 use ammonia::Builder;
-use anyhow::{Context, Result};
+use anyhow::Result;
 use chrono::Utc;
 use epub_builder::{EpubBuilder, EpubContent, ReferenceType, ZipLibrary};
 use regex::Regex;
-use std::fs::{self};
-use std::path::Path;
 use tokio::task::JoinSet;
 use tracing::info;
 
