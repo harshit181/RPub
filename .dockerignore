@@ -1,0 +1,7 @@
+target/
+.git/
+*.db
+*.db-journal
+.env
+static/epubs/*
+!static/epubs/.gitkeep

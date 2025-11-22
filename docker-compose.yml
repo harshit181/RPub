@@ -1,0 +1,13 @@
+version: '3.8'
+
+services:
+  rpub:
+    build: .
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./data:/app/data
+      - ./static/epubs:/app/static/epubs
+    environment:
+      - RUST_LOG=info
+    restart: unless-stopped
