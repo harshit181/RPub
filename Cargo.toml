@@ -21,6 +21,9 @@ tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
 dom_smoothie = "0.13"
 rusqlite = { version = "0.31", features = ["bundled"] }
 tokio-cron-scheduler = "0.9"
+image = "0.24"
+regex = "1.10"
+ammonia = "3.3"
 
 
 

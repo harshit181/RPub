@@ -4,6 +4,7 @@ mod epub_gen;
 mod db;
 mod scheduler;
 mod processor;
+mod image;
 mod opds;
 
 use axum::{

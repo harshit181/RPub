@@ -21,7 +21,7 @@ pub async fn generate_epub(feeds: Vec<String>, db: &Arc<Mutex<Connection>>) -> R
 
 
     // 4. Generate EPUB Data
-    let epub_data = epub_gen::generate_epub_data(&articles)
+    let epub_data = epub_gen::generate_epub_data(&articles).await
         .map_err(|e| anyhow::anyhow!("Failed to generate EPUB: {}", e))?;
 
     Ok(epub_data)
