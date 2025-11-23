@@ -1,7 +1,0 @@
-{
-    "feeds": [
-        "http://feeds.bbci.co.uk/news/rss.xml",
-        "https://news.ycombinator.com/rss"
-    ],
-    "output_dir": "output"
-}

@@ -3,14 +3,12 @@ use crate::image::process_images;
 use ammonia::Builder;
 use anyhow::Result;
 use chrono::Utc;
-use epub_builder::{EpubBuilder, EpubContent, ReferenceType, ZipLibrary};
+use epub_builder::{EpubBuilder, EpubContent, EpubVersion, ReferenceType, ZipLibrary};
 use regex::Regex;
 use tokio::task::JoinSet;
 use tracing::info;
 
 pub async fn generate_epub_data(articles: &[Article]) -> Result<Vec<u8>> {
-
-
     // Group articles by source
     use std::collections::HashMap;
     let mut articles_by_source: HashMap<String, Vec<&Article>> = HashMap::new();
@@ -50,8 +48,6 @@ pub async fn generate_epub_data(articles: &[Article]) -> Result<Vec<u8>> {
 
     // Wrap Master TOC
     let master_toc_content = wrap_xhtml("Table of Contents", &fix_xhtml(&master_toc_html));
-
-
 
     // Process Chapters - Parallel Processing
     let mut join_set = JoinSet::new();
@@ -100,8 +96,8 @@ pub async fn generate_epub_data(articles: &[Article]) -> Result<Vec<u8>> {
     // Initialize builder after async tasks are done to avoid Send issues
     let mut builder = EpubBuilder::new(ZipLibrary::new().map_err(|e| anyhow::anyhow!("{}", e))?)
         .map_err(|e| anyhow::anyhow!("{}", e))?;
-
     // Set metadata
+    builder.epub_version(EpubVersion::V33);
     builder
         .metadata("author", "RPub RSS Book")
         .map_err(|e| anyhow::anyhow!("{}", e))?;
@@ -113,12 +109,14 @@ pub async fn generate_epub_data(articles: &[Article]) -> Result<Vec<u8>> {
         .map_err(|e| anyhow::anyhow!("{}", e))?;
 
     // Add cover image
-    let cover_path = "static/cover.png";
+    info!("Adding cover image");
+    let cover_path = "static/cover.jpg";
     if std::path::Path::new(cover_path).exists() {
         match std::fs::read(cover_path) {
             Ok(cover_data) => {
+                info!("Added cover image");
                 builder
-                    .add_cover_image("cover.png", cover_data.as_slice(), "image/png")
+                    .add_cover_image("cover.jpg", cover_data.as_slice(), "image/jpeg")
                     .map_err(|e| anyhow::anyhow!("Failed to add cover image: {}", e))?;
             }
             Err(e) => {
@@ -207,7 +205,6 @@ pub async fn generate_epub_data(articles: &[Article]) -> Result<Vec<u8>> {
         .map_err(|e| anyhow::anyhow!("Failed to generate EPUB: {}", e))?;
     info!("EPUB generated successfully");
     Ok(buffer)
-    
 }
 
 fn clean_html(html: &str) -> String {
