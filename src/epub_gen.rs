@@ -33,20 +33,11 @@ pub async fn generate_epub_data(articles: &[Article]) -> Result<Vec<u8>> {
             .push(article);
     }
 
-    // Create Master TOC content
-    let mut master_toc_html = String::from("<h1>Table of Contents</h1><ul>");
-
     // Sort sources for consistent order
     let mut sources: Vec<_> = articles_by_source.keys().cloned().collect();
     sources.sort();
 
-    master_toc_html.push_str("</ul>");
-
-    // Re-plan:
-    // 1. Assign filenames to all articles.
-    // 2. Build Master TOC and Source TOCs.
-    // 3. Add all content.
-
+    // Assign filenames to all articles.
     let mut article_filenames = HashMap::new();
     for (i, _article) in articles.iter().enumerate() {
         article_filenames.insert(i, format!("chapter_{}.xhtml", i));
@@ -79,6 +70,49 @@ pub async fn generate_epub_data(articles: &[Article]) -> Result<Vec<u8>> {
                 .reftype(ReferenceType::Toc),
         )
         .map_err(|e| anyhow::anyhow!("{}", e))?;
+
+    // Process Chapters - Parallel Processing
+    let mut join_set = JoinSet::new();
+
+    for (i, article) in articles.iter().enumerate() {
+        let article = article.clone(); // Clone for the task
+        let chapter_filename = article_filenames[&i].clone();
+
+        join_set.spawn(async move {
+            // Clean content first
+            let cleaned_content = clean_html(&article.content);
+
+            // Process images in content
+            let (processed_content, images) = process_images(&cleaned_content).await;
+
+            // Fix XHTML (close void tags)
+            let fixed_content = fix_xhtml(&processed_content);
+
+            // Wrap in XHTML skeleton
+            let content_html = format!(
+                "<h1>{}</h1><p><strong>Source:</strong> {} <br /> <strong>Date:</strong> {}</p><hr />{}<p><a href=\"{}\">Read original article</a></p>",
+                escape_xml(&article.title),
+                escape_xml(&article.source),
+                article.pub_date.format("%Y-%m-%d %H:%M"),
+                fixed_content,
+                escape_xml(&article.link)
+            );
+            let final_content = wrap_xhtml(&article.title, &content_html);
+
+            (i, article, chapter_filename, final_content, images)
+        });
+    }
+
+    // Collect results
+    let mut processed_articles_map = HashMap::new();
+    while let Some(res) = join_set.join_next().await {
+        match res {
+            Ok(result) => {
+                processed_articles_map.insert(result.0, result);
+            }
+            Err(e) => info!("Task join error: {}", e),
+        }
+    }
 
     // Source TOCs and Chapters
     for source in &sources {
@@ -114,66 +148,34 @@ pub async fn generate_epub_data(articles: &[Article]) -> Result<Vec<u8>> {
                 EpubContent::new(source_toc_filename, source_toc_content.as_bytes()).title(source),
             )
             .map_err(|e| anyhow::anyhow!("{}", e))?;
-    }
 
-    // Add Chapters - Parallel Processing
-    let mut join_set = JoinSet::new();
+        // Add Chapters for this Source
+        for article in source_articles {
+            let index = articles
+                .iter()
+                .position(|a| std::ptr::eq(a, *article))
+                .unwrap();
 
-    for (i, article) in articles.iter().enumerate() {
-        let article = article.clone(); // Clone for the task
-        let chapter_filename = article_filenames[&i].clone();
+            if let Some((_i, article, chapter_filename, processed_content, images)) =
+                processed_articles_map.remove(&index)
+            {
+                // Add images to EPUB
+                for (img_filename, img_data, mime_type) in images {
+                    builder
+                        .add_resource(img_filename, img_data.as_slice(), mime_type)
+                        .map_err(|e| anyhow::anyhow!("Failed to add image resource: {}", e))?;
+                }
 
-        join_set.spawn(async move {
-            // Clean content first
-            let cleaned_content = clean_html(&article.content);
-
-            // Process images in content
-            let (processed_content, images) = process_images(&cleaned_content).await;
-
-            // Fix XHTML (close void tags)
-            let fixed_content = fix_xhtml(&processed_content);
-
-            // Wrap in XHTML skeleton
-            let content_html = format!(
-                "<h1>{}</h1><p><strong>Source:</strong> {} <br /> <strong>Date:</strong> {}</p><hr />{}<p><a href=\"{}\">Read original article</a></p>",
-                escape_xml(&article.title),
-                escape_xml(&article.source),
-                article.pub_date.format("%Y-%m-%d %H:%M"),
-                fixed_content,
-                escape_xml(&article.link)
-            );
-            let final_content = wrap_xhtml(&article.title, &content_html);
-
-            (i, article, chapter_filename, final_content, images)
-        });
-    }
-
-    // Collect results
-    let mut processed_articles = Vec::new();
-    while let Some(res) = join_set.join_next().await {
-        match res {
-            Ok(result) => processed_articles.push(result),
-            Err(e) => info!("Task join error: {}", e),
+                builder
+                    .add_content(
+                        EpubContent::new(chapter_filename, processed_content.as_bytes())
+                            .title(&article.title),
+                    )
+                    .map_err(|e| anyhow::anyhow!("{}", e))?;
+            } else {
+                info!("Skipping article {} due to processing error", index);
+            }
         }
-    }
-
-    // Sort by index to maintain original order
-    processed_articles.sort_by_key(|k| k.0);
-
-    for (_i, article, chapter_filename, processed_content, images) in processed_articles {
-        // Add images to EPUB
-        for (img_filename, img_data, mime_type) in images {
-            builder
-                .add_resource(img_filename, img_data.as_slice(), mime_type)
-                .map_err(|e| anyhow::anyhow!("Failed to add image resource: {}", e))?;
-        }
-
-        builder
-            .add_content(
-                EpubContent::new(chapter_filename, processed_content.as_bytes())
-                    .title(&article.title),
-            )
-            .map_err(|e| anyhow::anyhow!("{}", e))?;
     }
 
     let mut buffer = Vec::new();
