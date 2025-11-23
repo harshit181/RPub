@@ -55,12 +55,12 @@ async fn main() {
     let app = Router::new()
         .route("/generate", post(generate_handler))
         .route("/feeds", get(list_feeds).post(add_feed))
-        .route("/feeds/:id", delete(delete_feed))
+        .route("/feeds/{id}", delete(delete_feed))
         .route("/schedules", get(list_schedules).post(add_schedule))
-        .route("/schedules/:id", delete(delete_schedule))
+        .route("/schedules/{id}", delete(delete_schedule))
         .route("/downloads", get(list_downloads))
         .route("/opds", get(opds_handler))
-        .nest_service("/", ServeDir::new("static"))
+        .fallback_service(ServeDir::new("static"))
         .with_state(state);
 
     let addr = SocketAddr::from(([0, 0, 0, 0], 3000));

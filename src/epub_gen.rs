@@ -9,19 +9,7 @@ use tokio::task::JoinSet;
 use tracing::info;
 
 pub async fn generate_epub_data(articles: &[Article]) -> Result<Vec<u8>> {
-    let mut builder = EpubBuilder::new(ZipLibrary::new().map_err(|e| anyhow::anyhow!("{}", e))?)
-        .map_err(|e| anyhow::anyhow!("{}", e))?;
 
-    // Set metadata
-    builder
-        .metadata("author", "RPub RSS Book")
-        .map_err(|e| anyhow::anyhow!("{}", e))?;
-    builder
-        .metadata(
-            "title",
-            format!("RSS Digest - {}", Utc::now().format("%Y-%m-%d")),
-        )
-        .map_err(|e| anyhow::anyhow!("{}", e))?;
 
     // Group articles by source
     use std::collections::HashMap;
@@ -63,13 +51,7 @@ pub async fn generate_epub_data(articles: &[Article]) -> Result<Vec<u8>> {
     // Wrap Master TOC
     let master_toc_content = wrap_xhtml("Table of Contents", &fix_xhtml(&master_toc_html));
 
-    builder
-        .add_content(
-            EpubContent::new("toc.xhtml", master_toc_content.as_bytes())
-                .title("Table of Contents")
-                .reftype(ReferenceType::Toc),
-        )
-        .map_err(|e| anyhow::anyhow!("{}", e))?;
+
 
     // Process Chapters - Parallel Processing
     let mut join_set = JoinSet::new();
@@ -113,6 +95,29 @@ pub async fn generate_epub_data(articles: &[Article]) -> Result<Vec<u8>> {
             Err(e) => info!("Task join error: {}", e),
         }
     }
+
+    // Initialize builder after async tasks are done to avoid Send issues
+    let mut builder = EpubBuilder::new(ZipLibrary::new().map_err(|e| anyhow::anyhow!("{}", e))?)
+        .map_err(|e| anyhow::anyhow!("{}", e))?;
+
+    // Set metadata
+    builder
+        .metadata("author", "RPub RSS Book")
+        .map_err(|e| anyhow::anyhow!("{}", e))?;
+    builder
+        .metadata(
+            "title",
+            format!("RSS Digest - {}", Utc::now().format("%Y-%m-%d")),
+        )
+        .map_err(|e| anyhow::anyhow!("{}", e))?;
+
+    builder
+        .add_content(
+            EpubContent::new("toc.xhtml", master_toc_content.as_bytes())
+                .title("Table of Contents")
+                .reftype(ReferenceType::Toc),
+        )
+        .map_err(|e| anyhow::anyhow!("{}", e))?;
 
     // Source TOCs and Chapters
     for source in &sources {
