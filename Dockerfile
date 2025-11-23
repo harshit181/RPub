@@ -1,5 +1,5 @@
 # Build Stage
-FROM rust:1.75-slim-bookworm as builder
+FROM --platform=linux/amd64 rust:1.91.1-slim-bookworm as builder
 
 WORKDIR /usr/src/rpub
 
@@ -13,7 +13,7 @@ COPY . .
 RUN cargo build --release
 
 # Runtime Stage
-FROM debian:bookworm-slim
+FROM --platform=linux/amd64 debian:bookworm-slim
 
 WORKDIR /app
 
