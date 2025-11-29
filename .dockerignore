@@ -1,6 +1,7 @@
 target/
 .git/
 *.db
+!rpub.db
 *.db-journal
 .env
 static/epubs/*

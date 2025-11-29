@@ -9,7 +9,7 @@ use crate::db::Feed;
 use axum::{
     extract::{Json, Path, State},
     http::{header, HeaderMap, StatusCode},
-    response::{IntoResponse, Response},
+    response::IntoResponse,
     routing::{delete, get, post},
     Router,
 };
@@ -235,7 +235,7 @@ async fn delete_schedule(
 async fn generate_handler(
     State(state): State<Arc<AppState>>,
     Json(payload): Json<GenerateRequest>,
-) -> Result<Response, (StatusCode, String)> {
+) -> Result<StatusCode, (StatusCode, String)> {
     info!("Received request to generate EPUB");
 
     // 1. Determine Feeds to Fetch
@@ -260,38 +260,20 @@ async fn generate_handler(
         ));
     }
 
-    // 2. Generate and Save using Processor
-    let filename = processor::generate_and_save(feeds_to_fetch, &state.db, "static/epubs")
-        .await
-        .map_err(|e| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                format!("Generation failed: {}", e),
-            )
-        })?;
+    // 2. Spawn Background Task
+    let db_clone = state.db.clone();
+    tokio::spawn(async move {
+        info!("Starting background EPUB generation...");
+        match processor::generate_and_save(feeds_to_fetch, &db_clone, "static/epubs").await {
+            Ok(filename) => {
+                info!("Background generation completed successfully: {}", filename);
+            }
+            Err(e) => {
+                tracing::error!("Background generation failed: {}", e);
+            }
+        }
+    });
 
-    // 3. Return Response (Download)
-    // We read the file back to stream it to the user, or we could just redirect them to the static file.
-    // For now, let's read it back to keep the existing behavior of immediate download.
-    let filepath = format!("static/epubs/{}", filename);
-    let epub_data = tokio::fs::read(&filepath).await.map_err(|e| {
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            format!("Failed to read generated file: {}", e),
-        )
-    })?;
-
-    let mut headers = HeaderMap::new();
-    headers.insert(
-        header::CONTENT_TYPE,
-        "application/epub+zip".parse().unwrap(),
-    );
-    headers.insert(
-        header::CONTENT_DISPOSITION,
-        format!("attachment; filename=\"{}\"", filename)
-            .parse()
-            .unwrap(),
-    );
-
-    Ok((headers, epub_data).into_response())
+    // 3. Return Accepted
+    Ok(StatusCode::ACCEPTED)
 }

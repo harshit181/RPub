@@ -148,7 +148,7 @@
             const btn = document.getElementById('generate-btn');
             const status = document.getElementById('status');
             btn.disabled = true;
-            status.textContent = 'Generating...';
+            status.textContent = 'Requesting generation...';
 
             try {
                 const res = await fetch('/generate', {
@@ -158,8 +158,17 @@
                 });
 
                 if (res.ok) {
-                    status.textContent = 'Done! Checking downloads...';
-                    loadDownloads();
+                    status.textContent = 'Generation started in background. Please wait...';
+                    // Poll for new downloads every 2 seconds for a while
+                    let checks = 0;
+                    const interval = setInterval(async () => {
+                        checks++;
+                        await loadDownloads();
+                        if (checks > 10) { // Stop auto-refreshing after 20 seconds
+                            clearInterval(interval);
+                            status.textContent = 'Generation started. Check downloads list below.';
+                        }
+                    }, 2000);
                 } else {
                     status.textContent = 'Error: ' + await res.text();
                 }
