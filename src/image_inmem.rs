@@ -3,13 +3,18 @@ use image::{DynamicImage, ImageFormat};
 use regex::Regex;
 use reqwest::Client;
 use std::io::Cursor;
-use std::sync::Arc;
-use tokio::{sync::Semaphore, task::JoinSet};
-use tracing::{error, info, warn};
+use tokio::{sync::mpsc::Sender, task::JoinSet};
 
-pub async fn process_images(html: &str) -> (String, Vec<(String, Cursor<Vec<u8>>, String)>) {
+use crate::epub_message::{CompletionMessage, EpubPart};
+use tracing::{error, info, warn};
+use uuid::Uuid;
+
+pub async fn process_images(
+    html: &str,
+    tx_m: &Sender<CompletionMessage>,
+    seq_id: &usize,
+) -> (String, usize) {
     let mut processed_html = html.to_string();
-    let mut images = Vec::new();
 
     // Regex to find img tags and extract src
     let img_regex = Regex::new(r#"<img[^>]+src="([^"]+)"[^>]*>"#).unwrap();
@@ -30,54 +35,74 @@ pub async fn process_images(html: &str) -> (String, Vec<(String, Cursor<Vec<u8>>
     // Deduplicate matches
     matches.sort();
     matches.dedup();
-
-    let mut join_set = JoinSet::new();
-    let semaphore = Arc::new(Semaphore::new(50));
+    let total_images = matches.len();
     for (i, src) in matches.into_iter().enumerate() {
         let client = client.clone();
         let src_clone = src.clone();
-        let permit = semaphore.clone().acquire_owned().await.unwrap();
-        join_set.spawn(async move {
-            let _permit = permit;
+        let extension = "jpg";
+        let uuid = Uuid::new_v4();
+        let filename = format!("image_{}_{}.{}", uuid, i, extension);
+        processed_html = processed_html.replace(&src, &filename);
+        let tx_m = tx_m.clone();
+        let sq = *seq_id;
+        tokio::spawn(async move {
             info!("Processing image: {}", src_clone);
             match download_image(&client, &src_clone).await {
                 Ok((img_data, format)) => match resize_and_grayscale(img_data, format) {
                     Ok(processed_data) => {
-                        let extension = "jpg";
-                        let filename = format!(
-                            "image_{}_{}.{}",
-                            chrono::Utc::now().timestamp_millis(),
-                            i,
-                            extension
-                        );
                         let mime_type = "image/jpeg".to_string();
                         let cursor = Cursor::new(processed_data);
-                        Ok((src_clone, filename, cursor, mime_type))
+                        let res_part = EpubPart::Resource {
+                            filename: filename,
+                            content: Box::new(cursor),
+                            mime_type,
+                        };
+                        let mut parts = Vec::new();
+                        parts.push(res_part);
+                        if let Err(_) = tx_m
+                            .send(CompletionMessage {
+                                sequence_id: sq,
+                                parts,
+                            })
+                            .await
+                        {
+                            info!("Failed to send images {} (receiver might be closed)", i);
+                        }
+                        drop(tx_m);
+                        Ok("Completed")
                     }
-                    Err(e) => Err((src_clone, format!("Processing failed: {}", e))),
+                    Err(e) => {
+                        if let Err(_) = tx_m
+                            .send(CompletionMessage {
+                                sequence_id: sq,
+                                parts: Vec::new(),
+                            })
+                            .await
+                        {
+                            info!("Failed to send images {} (Error)", i);
+                        }
+                        drop(tx_m);
+                        Err("Failed")
+                    }
                 },
-                Err(e) => Err((src_clone, format!("Download failed: {}", e))),
+                Err(e) => {
+                    if let Err(_) = tx_m
+                        .send(CompletionMessage {
+                            sequence_id: sq,
+                            parts: Vec::new(),
+                        })
+                        .await
+                    {
+                        info!("Failed to send images {} (Error)", i);
+                    }
+                    drop(tx_m);
+                    Err("Failed")
+                }
             }
         });
     }
 
-    while let Some(res) = join_set.join_next().await {
-        match res {
-            Ok(Ok((src, filename, cursor, mime_type))) => {
-                // Replace src in HTML
-                processed_html = processed_html.replace(&src, &filename);
-                images.push((filename, cursor, mime_type));
-            }
-            Ok(Err((src, e))) => {
-                warn!("Failed to process image {}: {}", src, e);
-            }
-            Err(e) => {
-                error!("Task join error: {}", e);
-            }
-        }
-    }
-
-    (processed_html, images)
+    (processed_html, total_images)
 }
 
 async fn download_image(client: &Client, url: &str) -> Result<(Vec<u8>, ImageFormat)> {
@@ -91,15 +116,15 @@ async fn download_image(client: &Client, url: &str) -> Result<(Vec<u8>, ImageFor
 
     Ok((bytes, format))
 }
-fn test(_data: DynamicImage) {}
+
 fn resize_and_grayscale(data: Vec<u8>, format: ImageFormat) -> Result<Vec<u8>> {
     let img = image::load_from_memory_with_format(&data, format)?;
 
     // Resize
     let resized = img.resize(600, 800, image::imageops::FilterType::Nearest);
-    test(img);
+    drop(img);
     let grayscale = resized.grayscale();
-    test(resized);
+    drop(resized);
     // Encode to JPEG
     let mut buffer = Vec::new();
     let mut cursor = Cursor::new(&mut buffer);

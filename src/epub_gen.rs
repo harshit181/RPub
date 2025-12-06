@@ -6,14 +6,18 @@ use chrono::Utc;
 use epub_builder::{EpubBuilder, EpubContent, EpubVersion, ReferenceType, ZipLibrary};
 use regex::Regex;
 use std::io::{Read, Seek, SeekFrom, Write};
-use tokio::task::JoinSet;
+use std::sync::Arc;
+use std::sync::atomic::{AtomicUsize, Ordering};
+use tokio::{sync::mpsc::Sender, task::JoinSet};
 use tracing::info;
+use crate::epub_message::EpubPart;
 
 pub async fn generate_epub_data<W: Write + Seek + Send + 'static>(
     articles: &[Article],
     output: W,
 ) -> Result<()> {
     use std::collections::HashMap;
+    use crate::epub_message::{CompletionMessage, EpubPart};
     let mut articles_by_source: HashMap<String, Vec<&Article>> = HashMap::new();
     for article in articles {
         articles_by_source
@@ -28,28 +32,6 @@ pub async fn generate_epub_data<W: Write + Seek + Send + 'static>(
     let mut article_filenames = HashMap::new();
     for (i, _article) in articles.iter().enumerate() {
         article_filenames.insert(i, format!("chapter_{}.xhtml", i));
-    }
-
-    trait InputData: Read + Seek + Send {}
-    impl<T: Read + Seek + Send> InputData for T {}
-
-    enum EpubPart {
-        Content {
-            filename: String,
-            title: String,
-            content: String,
-            reftype: Option<ReferenceType>,
-        },
-        Resource {
-            filename: String,
-            content: Box<dyn InputData>,
-            mime_type: String,
-        },
-    }
-
-    struct CompletionMessage {
-        sequence_id: usize,
-        parts: Vec<EpubPart>,
     }
 
     let mut next_seq_id = 0;
@@ -78,7 +60,9 @@ pub async fn generate_epub_data<W: Write + Seek + Send + 'static>(
     info!("Total EPUB parts to write: {}", total_parts);
 
     let (tx, mut rx) = tokio::sync::mpsc::channel::<CompletionMessage>(32);
-
+    let (tx_m, mut rx_m) = tokio::sync::mpsc::channel::<CompletionMessage>(32);
+    let counter = Arc::new(AtomicUsize::new(0));
+    let counter_again =Arc::clone(&counter);
     let builder_handle = tokio::task::spawn_blocking(move || -> Result<()> {
         let mut builder =
             EpubBuilder::new(ZipLibrary::new().map_err(|e| anyhow::anyhow!("{}", e))?)
@@ -109,46 +93,29 @@ pub async fn generate_epub_data<W: Write + Seek + Send + 'static>(
 
         let mut current_seq = 0;
         let mut buffer: HashMap<usize, Vec<EpubPart>> = HashMap::new();
-
         while let Some(msg) = rx.blocking_recv() {
             buffer.insert(msg.sequence_id, msg.parts);
-
             while let Some(parts) = buffer.remove(&current_seq) {
                 info!("Writing sequence {} to EPUB", current_seq);
-                for part in parts {
-                    match part {
-                        EpubPart::Content {
-                            filename,
-                            title,
-                            content,
-                            reftype,
-                        } => {
-                            let mut content =
-                                EpubContent::new(filename, content.as_bytes()).title(title);
-                            if let Some(rt) = reftype {
-                                content = content.reftype(rt);
-                            }
-                            builder
-                                .add_content(content)
-                                .map_err(|e| anyhow::anyhow!("{}", e))?;
-                        }
-                        EpubPart::Resource {
-                            filename,
-                            mut content,
-                            mime_type,
-                        } => {
-                            content.seek(SeekFrom::Start(0))?;
-                            builder
-                                .add_resource(filename, content, mime_type)
-                                .map_err(|e| anyhow::anyhow!("Failed to add resource: {}", e))?;
-                        }
-                    }
-                }
+                populate_epub_data(&mut builder, parts)?;
                 current_seq += 1;
             }
 
             if current_seq >= total_parts {
-                info!("All parts received. Finishing EPUB.");
+                info!("All parts received. Moving to images");
+                break;
+            }
+        }
+        current_seq=0;
+        let total_images= &counter_again.load(Ordering::Relaxed);
+        info!("Total images are {}",&total_images);
+        while let Some(msg) = rx_m.blocking_recv() {
+            info!("Got image with seq id {} {}", msg.sequence_id ,&current_seq);
+            let parts =msg.parts;
+            populate_epub_data(&mut builder, parts)?;
+            current_seq += 1;
+            if current_seq >= *total_images {
+                info!("All images received. Finishing EPUB.");
                 break;
             }
         }
@@ -225,10 +192,10 @@ pub async fn generate_epub_data<W: Write + Seek + Send + 'static>(
     }
 
     let mut join_set = JoinSet::new();
-
     for (i, article) in articles.iter().enumerate() {
         let article = article.clone();
         let chapter_filename = article_filenames[&i].clone();
+        let temp_log = article_filenames[&i].clone();
         let seq_id = article_seq_ids[&i];
         let tx = tx.clone();
 
@@ -237,12 +204,13 @@ pub async fn generate_epub_data<W: Write + Seek + Send + 'static>(
             .replace(|c: char| !c.is_alphanumeric(), "_")
             .to_lowercase();
         let back_link = format!("toc_{}.xhtml", source_slug);
-
+        let tx_m = tx_m.clone();
+        let counter_ref = Arc::clone(&counter);
         join_set.spawn(async move {
             let cleaned_content = clean_html(&article.content);
-            let (processed_content, images) = process_images(&cleaned_content).await;
+            let (processed_content,total_images_for_seq) = process_images(&cleaned_content,&tx_m,&seq_id).await;
+            counter_ref.fetch_add(total_images_for_seq, Ordering::Relaxed);
             let fixed_content = fix_xhtml(&processed_content);
-
             let content_html = format!(
                 "<h1>{}</h1><p><strong>Source:</strong> {} <br /> <strong>Date:</strong> {}</p><hr />{}<p><a href=\"{}\">Read original article</a></p><p><a href=\"{}\">Back to Feed TOC</a></p>",
                 escape_xml(&article.title),
@@ -255,20 +223,14 @@ pub async fn generate_epub_data<W: Write + Seek + Send + 'static>(
             let final_content = wrap_xhtml(&article.title, &content_html);
 
             let mut parts = Vec::new();
-            for (img_filename, temp_file, mime_type) in images {
-                parts.push(EpubPart::Resource {
-                    filename: img_filename,
-                    content: Box::new(temp_file),
-                    mime_type,
-                });
-            }
+
             parts.push(EpubPart::Content {
                 filename: chapter_filename,
                 title: article.title,
                 content: final_content,
                 reftype: None,
             });
-
+                info!("Sending Completed Part {}", temp_log);
             if let Err(_) = tx.send(CompletionMessage {
                 sequence_id: seq_id,
                 parts,
@@ -290,6 +252,39 @@ pub async fn generate_epub_data<W: Write + Seek + Send + 'static>(
         .map_err(|e| anyhow::anyhow!("Builder task joined error: {}", e))??;
 
     info!("EPUB generated successfully");
+    Ok(())
+}
+
+fn populate_epub_data(mut builder: &mut EpubBuilder<ZipLibrary>, parts: Vec<EpubPart>) -> Result<()> {
+    for part in parts {
+        match part {
+            EpubPart::Content {
+                filename,
+                title,
+                content,
+                reftype,
+            } => {
+                let mut content =
+                    EpubContent::new(filename, content.as_bytes()).title(title);
+                if let Some(rt) = reftype {
+                    content = content.reftype(rt);
+                }
+                builder
+                    .add_content(content)
+                    .map_err(|e| anyhow::anyhow!("{}", e))?;
+            }
+            EpubPart::Resource {
+                filename,
+                mut content,
+                mime_type,
+            } => {
+                content.seek(SeekFrom::Start(0))?;
+                builder
+                    .add_resource(filename, content, mime_type)
+                    .map_err(|e| anyhow::anyhow!("Failed to add resource: {}", e))?;
+            }
+        }
+    }
     Ok(())
 }
 

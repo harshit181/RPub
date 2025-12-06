@@ -9,6 +9,8 @@ mod image;
 mod opds;
 mod processor;
 mod scheduler;
+mod epub_message;
+
 use crate::db::Feed;
 use axum::{
     extract::{Json, Path, State},
