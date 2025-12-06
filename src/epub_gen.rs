@@ -5,12 +5,14 @@ use anyhow::Result;
 use chrono::Utc;
 use epub_builder::{EpubBuilder, EpubContent, EpubVersion, ReferenceType, ZipLibrary};
 use regex::Regex;
-use std::io::{Seek, SeekFrom, Write};
+use std::io::{Read, Seek, SeekFrom, Write};
 use tokio::task::JoinSet;
 use tracing::info;
 
-pub async fn generate_epub_data<W: Write + Seek>(articles: &[Article], output: W) -> Result<()> {
-    // Group articles by source
+pub async fn generate_epub_data<W: Write + Seek + Send + 'static>(
+    articles: &[Article],
+    output: W,
+) -> Result<()> {
     use std::collections::HashMap;
     let mut articles_by_source: HashMap<String, Vec<&Article>> = HashMap::new();
     for article in articles {
@@ -20,25 +22,150 @@ pub async fn generate_epub_data<W: Write + Seek>(articles: &[Article], output: W
             .push(article);
     }
 
-    // Sort sources for consistent order
     let mut sources: Vec<_> = articles_by_source.keys().cloned().collect();
     sources.sort();
 
-    // Assign filenames to all articles.
     let mut article_filenames = HashMap::new();
     for (i, _article) in articles.iter().enumerate() {
         article_filenames.insert(i, format!("chapter_{}.xhtml", i));
     }
 
-    // Master TOC
-    let mut master_toc_html = String::from("<h1>Table of Contents</h1><ul>");
+    trait InputData: Read + Seek + Send {}
+    impl<T: Read + Seek + Send> InputData for T {}
 
+    enum EpubPart {
+        Content {
+            filename: String,
+            title: String,
+            content: String,
+            reftype: Option<ReferenceType>,
+        },
+        Resource {
+            filename: String,
+            content: Box<dyn InputData>,
+            mime_type: String,
+        },
+    }
+
+    struct CompletionMessage {
+        sequence_id: usize,
+        parts: Vec<EpubPart>,
+    }
+
+    let mut next_seq_id = 0;
+
+    let master_toc_seq_id = 0;
+    next_seq_id += 1;
+
+    let mut source_toc_seq_ids = HashMap::new();
+    let mut article_seq_ids = HashMap::new();
+
+    for source in &sources {
+        source_toc_seq_ids.insert(source.clone(), next_seq_id);
+        next_seq_id += 1;
+
+        for article in &articles_by_source[source] {
+            let index = articles
+                .iter()
+                .position(|a| std::ptr::eq(a, *article))
+                .unwrap();
+            article_seq_ids.insert(index, next_seq_id);
+            next_seq_id += 1;
+        }
+    }
+
+    let total_parts = next_seq_id;
+    info!("Total EPUB parts to write: {}", total_parts);
+
+    let (tx, mut rx) = tokio::sync::mpsc::channel::<CompletionMessage>(32);
+
+    let builder_handle = tokio::task::spawn_blocking(move || -> Result<()> {
+        let mut builder =
+            EpubBuilder::new(ZipLibrary::new().map_err(|e| anyhow::anyhow!("{}", e))?)
+                .map_err(|e| anyhow::anyhow!("{}", e))?;
+
+        builder.epub_version(EpubVersion::V33);
+        builder
+            .metadata("author", "RPub RSS Book")
+            .map_err(|e| anyhow::anyhow!("{}", e))?;
+        builder
+            .metadata(
+                "title",
+                format!("RSS Digest - {}", Utc::now().format("%Y-%m-%d")),
+            )
+            .map_err(|e| anyhow::anyhow!("{}", e))?;
+
+        let cover_path = "static/cover.jpg";
+        if std::path::Path::new(cover_path).exists() {
+            match std::fs::read(cover_path) {
+                Ok(cover_data) => {
+                    builder
+                        .add_cover_image("cover.jpg", cover_data.as_slice(), "image/jpeg")
+                        .map_err(|e| anyhow::anyhow!("Failed to add cover image: {}", e))?;
+                }
+                Err(e) => info!("Failed to read cover image: {}", e),
+            }
+        }
+
+        let mut current_seq = 0;
+        let mut buffer: HashMap<usize, Vec<EpubPart>> = HashMap::new();
+
+        while let Some(msg) = rx.blocking_recv() {
+            buffer.insert(msg.sequence_id, msg.parts);
+
+            while let Some(parts) = buffer.remove(&current_seq) {
+                info!("Writing sequence {} to EPUB", current_seq);
+                for part in parts {
+                    match part {
+                        EpubPart::Content {
+                            filename,
+                            title,
+                            content,
+                            reftype,
+                        } => {
+                            let mut content =
+                                EpubContent::new(filename, content.as_bytes()).title(title);
+                            if let Some(rt) = reftype {
+                                content = content.reftype(rt);
+                            }
+                            builder
+                                .add_content(content)
+                                .map_err(|e| anyhow::anyhow!("{}", e))?;
+                        }
+                        EpubPart::Resource {
+                            filename,
+                            mut content,
+                            mime_type,
+                        } => {
+                            content.seek(SeekFrom::Start(0))?;
+                            builder
+                                .add_resource(filename, content, mime_type)
+                                .map_err(|e| anyhow::anyhow!("Failed to add resource: {}", e))?;
+                        }
+                    }
+                }
+                current_seq += 1;
+            }
+
+            if current_seq >= total_parts {
+                info!("All parts received. Finishing EPUB.");
+                break;
+            }
+        }
+
+        builder
+            .generate(output)
+            .map_err(|e| anyhow::anyhow!("Failed to generate EPUB: {}", e))?;
+
+        Ok(())
+    });
+
+    let mut master_toc_html = String::from("<h1>Table of Contents</h1><ul>");
     for source in &sources {
         let source_slug = source
             .replace(|c: char| !c.is_alphanumeric(), "_")
             .to_lowercase();
         let source_toc_filename = format!("toc_{}.xhtml", source_slug);
-
         master_toc_html.push_str(&format!(
             "<li><a href=\"{}\">{}</a></li>",
             source_toc_filename,
@@ -46,97 +173,20 @@ pub async fn generate_epub_data<W: Write + Seek>(articles: &[Article], output: W
         ));
     }
     master_toc_html.push_str("</ul>");
-
-    // Wrap Master TOC
     let master_toc_content = wrap_xhtml("Table of Contents", &fix_xhtml(&master_toc_html));
 
-    // Process Chapters - Parallel Processing
-    let mut join_set = JoinSet::new();
+    tx.send(CompletionMessage {
+        sequence_id: master_toc_seq_id,
+        parts: vec![EpubPart::Content {
+            filename: "toc.xhtml".to_string(),
+            title: "Table of Contents".to_string(),
+            content: master_toc_content,
+            reftype: Some(ReferenceType::Toc),
+        }],
+    })
+    .await
+    .map_err(|_| anyhow::anyhow!("Failed to send Master TOC"))?;
 
-    for (i, article) in articles.iter().enumerate() {
-        let article = article.clone(); // Clone for the task
-        let chapter_filename = article_filenames[&i].clone();
-
-        join_set.spawn(async move {
-            // Clean content first
-            let cleaned_content = clean_html(&article.content);
-
-            // Process images in content
-            let (processed_content, images) = process_images(&cleaned_content).await;
-
-            // Fix XHTML (close void tags)
-            let fixed_content = fix_xhtml(&processed_content);
-
-            // Wrap in XHTML skeleton
-            let content_html = format!(
-                "<h1>{}</h1><p><strong>Source:</strong> {} <br /> <strong>Date:</strong> {}</p><hr />{}<p><a href=\"{}\">Read original article</a></p><p><a href=\"{}\">Back to Feed TOC</a></p>",
-                escape_xml(&article.title),
-                escape_xml(&article.source),
-                article.pub_date.format("%Y-%m-%d %H:%M"),
-                fixed_content,
-                escape_xml(&article.link),
-                format!("toc_{}.xhtml", article.source.replace(|c: char| !c.is_alphanumeric(), "_").to_lowercase())
-            );
-            let final_content = wrap_xhtml(&article.title, &content_html);
-
-            (i, article, chapter_filename, final_content, images)
-        });
-    }
-
-    // Collect results
-    let mut processed_articles_map = HashMap::new();
-    while let Some(res) = join_set.join_next().await {
-        match res {
-            Ok(result) => {
-                processed_articles_map.insert(result.0, result);
-            }
-            Err(e) => info!("Task join error: {}", e),
-        }
-    }
-
-    // Initialize builder after async tasks are done to avoid Send issues
-    let mut builder = EpubBuilder::new(ZipLibrary::new().map_err(|e| anyhow::anyhow!("{}", e))?)
-        .map_err(|e| anyhow::anyhow!("{}", e))?;
-    // Set metadata
-    builder.epub_version(EpubVersion::V33);
-    builder
-        .metadata("author", "RPub RSS Book")
-        .map_err(|e| anyhow::anyhow!("{}", e))?;
-    builder
-        .metadata(
-            "title",
-            format!("RSS Digest - {}", Utc::now().format("%Y-%m-%d")),
-        )
-        .map_err(|e| anyhow::anyhow!("{}", e))?;
-
-    // Add cover image
-    info!("Adding cover image");
-    let cover_path = "static/cover.jpg";
-    if std::path::Path::new(cover_path).exists() {
-        match std::fs::read(cover_path) {
-            Ok(cover_data) => {
-                info!("Added cover image");
-                builder
-                    .add_cover_image("cover.jpg", cover_data.as_slice(), "image/jpeg")
-                    .map_err(|e| anyhow::anyhow!("Failed to add cover image: {}", e))?;
-            }
-            Err(e) => {
-                info!("Failed to read cover image: {}", e);
-            }
-        }
-    } else {
-        info!("Cover image not found at {}", cover_path);
-    }
-
-    builder
-        .add_content(
-            EpubContent::new("toc.xhtml", master_toc_content.as_bytes())
-                .title("Table of Contents")
-                .reftype(ReferenceType::Toc),
-        )
-        .map_err(|e| anyhow::anyhow!("{}", e))?;
-
-    // Source TOCs and Chapters
     for source in &sources {
         let source_slug = source
             .replace(|c: char| !c.is_alphanumeric(), "_")
@@ -145,15 +195,12 @@ pub async fn generate_epub_data<W: Write + Seek>(articles: &[Article], output: W
         let source_articles = &articles_by_source[source];
 
         let mut source_toc_html = format!("<h1>{}</h1><ul>", escape_xml(source));
-
         for article in source_articles {
-            // Find index in original list to get filename
             let index = articles
                 .iter()
                 .position(|a| std::ptr::eq(a, *article))
                 .unwrap();
             let filename = &article_filenames[&index];
-
             source_toc_html.push_str(&format!(
                 "<li><a href=\"{}\">{}</a></li>",
                 filename,
@@ -161,56 +208,93 @@ pub async fn generate_epub_data<W: Write + Seek>(articles: &[Article], output: W
             ));
         }
         source_toc_html.push_str("</ul>");
-
-        // Wrap Source TOC
         let source_toc_content = wrap_xhtml(source, &fix_xhtml(&source_toc_html));
 
-        builder
-            .add_content(
-                EpubContent::new(source_toc_filename, source_toc_content.as_bytes()).title(source),
-            )
-            .map_err(|e| anyhow::anyhow!("{}", e))?;
+        let seq_id = source_toc_seq_ids[source];
+        tx.send(CompletionMessage {
+            sequence_id: seq_id,
+            parts: vec![EpubPart::Content {
+                filename: source_toc_filename,
+                title: source.clone(),
+                content: source_toc_content,
+                reftype: None,
+            }],
+        })
+        .await
+        .map_err(|_| anyhow::anyhow!("Failed to send Source TOC"))?;
+    }
 
-        // Add Chapters for this Source
-        for article in source_articles {
-            let index = articles
-                .iter()
-                .position(|a| std::ptr::eq(a, *article))
-                .unwrap();
+    let mut join_set = JoinSet::new();
 
-            if let Some((_i, article, chapter_filename, processed_content, images)) =
-                processed_articles_map.remove(&index)
-            {
-                // Add images to EPUB
-                for (img_filename, mut temp_file, mime_type) in images {
-                    temp_file.seek(SeekFrom::Start(0))?;
-                    builder
-                        .add_resource(img_filename, temp_file, mime_type)
-                        .map_err(|e| anyhow::anyhow!("Failed to add image resource: {}", e))?;
-                }
+    for (i, article) in articles.iter().enumerate() {
+        let article = article.clone();
+        let chapter_filename = article_filenames[&i].clone();
+        let seq_id = article_seq_ids[&i];
+        let tx = tx.clone();
 
-                builder
-                    .add_content(
-                        EpubContent::new(chapter_filename, processed_content.as_bytes())
-                            .title(&article.title),
-                    )
-                    .map_err(|e| anyhow::anyhow!("{}", e))?;
-            } else {
-                info!("Skipping article {} due to processing error", index);
+        let source_slug = article
+            .source
+            .replace(|c: char| !c.is_alphanumeric(), "_")
+            .to_lowercase();
+        let back_link = format!("toc_{}.xhtml", source_slug);
+
+        join_set.spawn(async move {
+            let cleaned_content = clean_html(&article.content);
+            let (processed_content, images) = process_images(&cleaned_content).await;
+            let fixed_content = fix_xhtml(&processed_content);
+
+            let content_html = format!(
+                "<h1>{}</h1><p><strong>Source:</strong> {} <br /> <strong>Date:</strong> {}</p><hr />{}<p><a href=\"{}\">Read original article</a></p><p><a href=\"{}\">Back to Feed TOC</a></p>",
+                escape_xml(&article.title),
+                escape_xml(&article.source),
+                article.pub_date.format("%Y-%m-%d %H:%M"),
+                fixed_content,
+                escape_xml(&article.link),
+                back_link
+            );
+            let final_content = wrap_xhtml(&article.title, &content_html);
+
+            let mut parts = Vec::new();
+            for (img_filename, temp_file, mime_type) in images {
+                parts.push(EpubPart::Resource {
+                    filename: img_filename,
+                    content: Box::new(temp_file),
+                    mime_type,
+                });
             }
+            parts.push(EpubPart::Content {
+                filename: chapter_filename,
+                title: article.title,
+                content: final_content,
+                reftype: None,
+            });
+
+            if let Err(_) = tx.send(CompletionMessage {
+                sequence_id: seq_id,
+                parts,
+            }).await {
+                info!("Failed to send article {} (receiver might be closed)", i);
+            }
+        });
+    }
+    drop(tx);
+
+    while let Some(res) = join_set.join_next().await {
+        if let Err(e) = res {
+            info!("Article processing task failed: {}", e);
         }
     }
 
-    builder
-        .generate(output)
-        .map_err(|e| anyhow::anyhow!("Failed to generate EPUB: {}", e))?;
+    builder_handle
+        .await
+        .map_err(|e| anyhow::anyhow!("Builder task joined error: {}", e))??;
+
     info!("EPUB generated successfully");
     Ok(())
 }
 
 fn clean_html(html: &str) -> String {
     let mut builder = Builder::new();
-    // Configure ammonia to keep images and basic formatting
     builder.add_tags(&[
         "img",
         "p",
@@ -241,8 +325,6 @@ fn clean_html(html: &str) -> String {
 fn fix_xhtml(html: &str) -> String {
     let mut fixed = html.to_string();
 
-    // Fix unescaped ampersands
-    // Matches & optionally followed by a valid entity body
     let amp_regex = Regex::new(r"&([a-zA-Z][a-zA-Z0-9]*;|#\d+;|#x[0-9a-fA-F]+;)?").unwrap();
     fixed = amp_regex
         .replace_all(&fixed, |caps: &regex::Captures| {
@@ -254,14 +336,11 @@ fn fix_xhtml(html: &str) -> String {
         })
         .to_string();
 
-    // Fix unescaped < in attributes (specifically alt and title)
-    // Regex matches: attribute_name="value" or attribute_name='value'
-    // Rust regex doesn't support backreferences, so we match both quote types separately
     let attr_regex = Regex::new(r#"\b(alt|title)\s*=\s*(?:"([^"]*)"|'([^']*)')"#).unwrap();
     fixed = attr_regex
         .replace_all(&fixed, |caps: &regex::Captures| {
             let attr_name = &caps[1];
-            // Check which group matched
+
             let (quote, value) = if let Some(val) = caps.get(2) {
                 ("\"", val.as_str())
             } else {
@@ -273,16 +352,12 @@ fn fix_xhtml(html: &str) -> String {
         })
         .to_string();
 
-    // Fix img: <img ... > (without / before >)
-    // Regex: <img([^>]*[^/])>
     let img_regex = Regex::new(r"<img([^>]*[^/])>").unwrap();
     fixed = img_regex.replace_all(&fixed, "<img$1 />").to_string();
 
-    // Fix br: <br>
     let br_regex = Regex::new(r"<br\s*>").unwrap();
     fixed = br_regex.replace_all(&fixed, "<br />").to_string();
 
-    // Fix hr: <hr>
     let hr_regex = Regex::new(r"<hr\s*>").unwrap();
     fixed = hr_regex.replace_all(&fixed, "<hr />").to_string();
 
@@ -296,7 +371,7 @@ mod tests {
     #[test]
     fn test_clean_html_attributes() {
         let html = r#"<img src="test.jpg" alt="foo < bar">"#;
-        // clean_html doesn't escape < in attributes, but fix_xhtml should
+
         let cleaned = clean_html(html);
         let fixed = fix_xhtml(&cleaned);
         assert_eq!(fixed, r#"<img src="test.jpg" alt="foo &lt; bar" />"#);

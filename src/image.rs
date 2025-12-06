@@ -1,10 +1,12 @@
+use anyhow::Context;
 use anyhow::Result;
-use image::io::Reader as ImageReader;
-use image::ImageFormat;
+use libvips::{ops, VipsImage};
 use regex::Regex;
 use reqwest::Client;
-use std::io::{Cursor, Write};
+use std::io::Write;
+use std::sync::Arc;
 use tempfile::NamedTempFile;
+use tokio::sync::Semaphore;
 use tokio::task::JoinSet;
 use tracing::{error, info, warn};
 
@@ -12,7 +14,6 @@ pub async fn process_images(html: &str) -> (String, Vec<(String, NamedTempFile, 
     let mut processed_html = html.to_string();
     let mut images = Vec::new();
 
-    // Regex to find img tags and extract src
     let img_regex = Regex::new(r#"<img[^>]+src="([^"]+)"[^>]*>"#).unwrap();
 
     let client = Client::builder()
@@ -20,7 +21,6 @@ pub async fn process_images(html: &str) -> (String, Vec<(String, NamedTempFile, 
         .build()
         .unwrap_or_else(|_| Client::new());
 
-    // Collect all matches first
     let mut matches = Vec::new();
     for cap in img_regex.captures_iter(html) {
         if let Some(src) = cap.get(1) {
@@ -28,22 +28,30 @@ pub async fn process_images(html: &str) -> (String, Vec<(String, NamedTempFile, 
         }
     }
 
-    // Deduplicate matches to avoid downloading the same image multiple times
     matches.sort();
     matches.dedup();
 
+    let semaphore = Arc::new(Semaphore::new(50));
     let mut join_set = JoinSet::new();
 
     for (i, src) in matches.into_iter().enumerate() {
         let client = client.clone();
         let src_clone = src.clone();
 
+        let permit = semaphore.clone().acquire_owned().await.unwrap();
+
         join_set.spawn(async move {
-            info!("Processing image: {}", src_clone);
+            let _permit = permit;
+            info!("Processing image: {}", &src_clone);
             match download_image(&client, &src_clone).await {
-                Ok((img_data, format)) => {
-                    match resize_and_grayscale(&img_data, format) {
-                        Ok(processed_data) => {
+                Ok(temp_file) => {
+                    let file_path = temp_file.path().to_str().unwrap().to_string();
+
+                    let res =
+                        tokio::task::spawn_blocking(move || resize_and_grayscale(&file_path)).await;
+
+                    match res {
+                        Ok(Ok(processed_temp_file)) => {
                             let extension = "jpg";
                             let filename = format!(
                                 "image_{}_{}.{}",
@@ -52,24 +60,11 @@ pub async fn process_images(html: &str) -> (String, Vec<(String, NamedTempFile, 
                                 extension
                             );
                             let mime_type = "image/jpeg".to_string();
-
-                            // Write to temp file
-                            match NamedTempFile::new() {
-                                Ok(mut temp_file) => {
-                                    if let Err(e) = temp_file.write_all(&processed_data) {
-                                        return Err((
-                                            src_clone,
-                                            format!("Failed to write to temp file: {}", e),
-                                        ));
-                                    }
-                                    Ok((src_clone, filename, temp_file, mime_type))
-                                }
-                                Err(e) => {
-                                    Err((src_clone, format!("Failed to create temp file: {}", e)))
-                                }
-                            }
+                            info!("Processed image: {}", &src_clone);
+                            Ok((src_clone, filename, processed_temp_file, mime_type))
                         }
-                        Err(e) => Err((src_clone, format!("Processing failed: {}", e))),
+                        Ok(Err(e)) => Err((src_clone, format!("Processing failed: {}", e))),
+                        Err(e) => Err((src_clone, format!("Blocking task join error: {}", e))),
                     }
                 }
                 Err(e) => Err((src_clone, format!("Download failed: {}", e))),
@@ -80,7 +75,6 @@ pub async fn process_images(html: &str) -> (String, Vec<(String, NamedTempFile, 
     while let Some(res) = join_set.join_next().await {
         match res {
             Ok(Ok((src, filename, temp_file, mime_type))) => {
-                // Replace src in HTML
                 processed_html = processed_html.replace(&src, &filename);
                 images.push((filename, temp_file, mime_type));
             }
@@ -96,29 +90,31 @@ pub async fn process_images(html: &str) -> (String, Vec<(String, NamedTempFile, 
     (processed_html, images)
 }
 
-async fn download_image(client: &Client, url: &str) -> Result<(Vec<u8>, ImageFormat)> {
-    let resp = client.get(url).send().await?;
-    let bytes = resp.bytes().await?.to_vec();
+async fn download_image(client: &Client, url: &str) -> Result<NamedTempFile> {
+    let mut resp = client.get(url).send().await?;
+    let mut temp_file = NamedTempFile::new()?;
 
-    // Guess format
-    let format = image::guess_format(&bytes)?;
+    while let Some(chunk) = resp.chunk().await? {
+        temp_file.write_all(&chunk)?;
+    }
 
-    Ok((bytes, format))
+    Ok(temp_file)
 }
 
-fn resize_and_grayscale(data: &[u8], format: ImageFormat) -> Result<Vec<u8>> {
-    let img = ImageReader::with_format(Cursor::new(data), format).decode()?;
+fn resize_and_grayscale(file_path: &str) -> Result<NamedTempFile> {
+    let image = ops::thumbnail(file_path, 600)?;
 
-    // Resize
-    let resized = img.resize(600, 800, image::imageops::FilterType::Lanczos3);
+    let resized = image;
 
-    // Grayscale
-    let grayscale = resized.grayscale();
+    let grayscale = ops::colourspace(&resized, ops::Interpretation::BW)?;
 
-    // Encode to JPEG
-    let mut buffer = Vec::new();
-    let mut cursor = Cursor::new(&mut buffer);
-    grayscale.write_to(&mut cursor, ImageFormat::Jpeg)?;
+    let temp_file = tempfile::Builder::new().suffix(".jpg").tempfile()?;
+    let temp_path = temp_file
+        .path()
+        .to_str()
+        .context("Failed to convert temp file path to valid UTF-8 string")?;
+    info!("Created temp image at {}", &temp_path);
+    grayscale.image_write_to_file(temp_path)?;
 
-    Ok(buffer)
+    Ok(temp_file)
 }

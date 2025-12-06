@@ -10,7 +10,6 @@ use tracing::{error, info};
 pub async fn init_scheduler(db_conn: Arc<Mutex<Connection>>) -> Result<JobScheduler> {
     let sched = JobScheduler::new().await?;
 
-    // 1. Cleanup Job: Runs every hour
     let cleanup_job = Job::new_async("0 0 * * * *", |_uuid, _l| {
         Box::pin(async {
             info!("Running cleanup task...");
@@ -21,7 +20,6 @@ pub async fn init_scheduler(db_conn: Arc<Mutex<Connection>>) -> Result<JobSchedu
     })?;
     sched.add(cleanup_job).await?;
 
-    // 2. Load Schedules from DB
     let schedules = {
         let conn = db_conn
             .lock()
@@ -34,8 +32,6 @@ pub async fn init_scheduler(db_conn: Arc<Mutex<Connection>>) -> Result<JobSchedu
             let db_clone = db_conn.clone();
             info!("Adding schedule: {}", schedule.cron_expression);
 
-            // Create a job for this schedule
-            // Note: We need to handle potential errors in cron parsing
             match Job::new_async(schedule.cron_expression.as_str(), move |_uuid, _l| {
                 let db = db_clone.clone();
                 Box::pin(async move {
@@ -72,7 +68,6 @@ async fn run_scheduled_generation(db: Arc<Mutex<Connection>>) -> Result<()> {
         return Ok(());
     }
 
-    // Generate and Save
     let filename = processor::generate_and_save(feeds, &db, "static/epubs").await?;
     info!("Scheduled generation completed: {}", filename);
     Ok(())

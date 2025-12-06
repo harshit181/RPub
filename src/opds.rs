@@ -19,7 +19,6 @@ pub async fn generate_opds_feed(base_url: &str, dir_path: &str) -> Result<String
         }
     }
 
-    // Sort by date descending
     entries.sort_by(|a, b| b.1.cmp(&a.1));
 
     let updated = if let Some(first) = entries.first() {

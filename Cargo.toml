@@ -21,7 +21,12 @@ tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
 dom_smoothie = "0.13"
 rusqlite = { version = "0.37", features = ["bundled"] }
 tokio-cron-scheduler = "0.9"
-image = "0.24"
+libvips = { version = "1.7.1", optional = true }
 regex = "1.10"
 ammonia = "4.1.2"
 tempfile = "3.23.0"
+image = "0.24"
+
+[features]
+default = []
+mem_opt = ["dep:libvips"]

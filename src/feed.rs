@@ -95,7 +95,6 @@ pub async fn filter_items(
         .unwrap_or_else(|_| Client::new());
     let mut join_set = tokio::task::JoinSet::new();
 
-    // Handle Feed Errors
     for (url, error_msg) in errors {
         articles.push(Article {
             title: format!("Error loading feed: {}", url),
@@ -126,7 +125,7 @@ pub async fn filter_items(
                         .as_ref()
                         .map(|t| t.content.clone())
                         .unwrap_or("No Title".to_string());
-                    // Find the first link, preferring alternate (HTML) links
+
                     let link = entry
                         .links
                         .iter()
@@ -147,7 +146,7 @@ pub async fn filter_items(
                         };
                         info!("Processing article: {}", title);
 
-                        // Fetch full content if link is present
+
                         let content = if !link.is_empty() {
                             match fetch_full_content(&client, &link).await {
                                 Ok(c) => c,
@@ -186,7 +185,6 @@ pub async fn filter_items(
         }
     }
 
-    // Sort by date descending
     articles.sort_by(|a, b| b.pub_date.cmp(&a.pub_date));
 
     articles

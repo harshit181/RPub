@@ -1,6 +1,6 @@
-use rusqlite::{params, Connection, Result};
 use chrono::Utc;
-use serde::{Serialize, Deserialize};
+use rusqlite::{params, Connection, Result};
+use serde::{Deserialize, Serialize};
 
 pub fn init_db(path: &str) -> Result<Connection> {
     let conn = Connection::open(path)?;
@@ -45,8 +45,12 @@ pub struct Schedule {
     pub active: bool,
 }
 
-// Feed Operations
-pub fn add_feed(conn: &Connection, url: &str, name: Option<&str>, concurrency_limit: usize) -> Result<()> {
+pub fn add_feed(
+    conn: &Connection,
+    url: &str,
+    name: Option<&str>,
+    concurrency_limit: usize,
+) -> Result<()> {
     conn.execute(
         "INSERT OR IGNORE INTO feeds (url, name, concurrency_limit, created_at) VALUES (?1, ?2, ?3, ?4)",
         params![url, name, concurrency_limit, Utc::now().to_rfc3339()],
@@ -77,7 +81,6 @@ pub fn delete_feed(conn: &Connection, id: i64) -> Result<()> {
     Ok(())
 }
 
-// Schedule Operations
 pub fn add_schedule(conn: &Connection, cron_expression: &str) -> Result<()> {
     conn.execute(
         "INSERT INTO schedules (cron_expression, active, created_at) VALUES (?1, ?2, ?3)",

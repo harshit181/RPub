@@ -1,6 +1,10 @@
 mod db;
 mod epub_gen;
 mod feed;
+#[cfg(feature = "mem_opt")]
+mod image;
+#[cfg(not(feature = "mem_opt"))]
+#[path = "image_inmem.rs"]
 mod image;
 mod opds;
 mod processor;
@@ -31,25 +35,23 @@ struct GenerateRequest {
 
 #[tokio::main]
 async fn main() {
-    // Initialize tracing
-    // Initialize tracing
+    #[cfg(feature = "mem_opt")]
+    let _vips_app = libvips::VipsApp::new("rpub", false).expect("Failed to initialize libvips");
+
     let filter = tracing_subscriber::EnvFilter::try_from_default_env()
         .unwrap_or_else(|_| "info,html5ever=error".into());
     tracing_subscriber::fmt().with_env_filter(filter).init();
 
-    // Initialize DB
     let conn = db::init_db("rpub.db").expect("Failed to initialize database");
     let db_mutex = Arc::new(Mutex::new(conn));
     let state = Arc::new(AppState {
         db: db_mutex.clone(),
     });
 
-    // Initialize Scheduler
     let _sched = scheduler::init_scheduler(db_mutex)
         .await
         .expect("Failed to initialize scheduler");
 
-    // Ensure output directory exists
     tokio::fs::create_dir_all("static/epubs").await.unwrap();
 
     let app = Router::new()
@@ -70,7 +72,6 @@ async fn main() {
     axum::serve(listener, app).await.unwrap();
 }
 
-// OPDS Handler
 async fn opds_handler(headers: HeaderMap) -> Result<impl IntoResponse, (StatusCode, String)> {
     let host = headers
         .get(header::HOST)
@@ -99,7 +100,6 @@ async fn opds_handler(headers: HeaderMap) -> Result<impl IntoResponse, (StatusCo
     Ok((response_headers, xml))
 }
 
-// Download Handlers
 async fn list_downloads() -> Result<Json<Vec<String>>, (StatusCode, String)> {
     let mut files = Vec::new();
     let mut entries = tokio::fs::read_dir("static/epubs").await.map_err(|e| {

@@ -6,7 +6,11 @@ use rusqlite::Connection;
 use std::sync::{Arc, Mutex};
 use tracing::info;
 
-pub async fn generate_epub(feeds: Vec<Feed>, _db: &Arc<Mutex<Connection>>, output_path: &str) -> Result<()> {
+pub async fn generate_epub(
+    feeds: Vec<Feed>,
+    _db: &Arc<Mutex<Connection>>,
+    output_path: &str,
+) -> Result<()> {
     info!("Fetching {} feeds...", feeds.len());
 
     let (fetched_feeds, errors) = feed::fetch_feeds(&feeds).await;
