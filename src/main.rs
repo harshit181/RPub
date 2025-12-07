@@ -10,6 +10,7 @@ mod opds;
 mod processor;
 mod scheduler;
 mod epub_message;
+mod util;
 
 use crate::db::Feed;
 use axum::{

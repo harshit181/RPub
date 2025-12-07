@@ -3,6 +3,7 @@ use image::ImageFormat;
 use regex::Regex;
 use reqwest::Client;
 use std::io::Cursor;
+use std::sync::LazyLock;
 use tokio::sync::mpsc::Sender;
 
 use crate::epub_message::{CompletionMessage, EpubPart};
@@ -16,17 +17,17 @@ pub async fn process_images(
 ) -> (String, usize) {
     let mut processed_html = html.to_string();
 
-    // Regex to find img tags and extract src
-    let img_regex = Regex::new(r#"<img[^>]+src="([^"]+)"[^>]*>"#).unwrap();
+    static IMG_REGEX: LazyLock<Regex> = LazyLock::new(||
+       Regex::new(r#"<img[^>]+src="([^"]+)"[^>]*>"#).unwrap()
+    );
 
     let client = Client::builder()
         .user_agent("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
         .build()
         .unwrap_or_else(|_| Client::new());
 
-    // Collect all matches first
     let mut matches = Vec::new();
-    for cap in img_regex.captures_iter(html) {
+    for cap in IMG_REGEX.captures_iter(html) {
         if let Some(src) = cap.get(1) {
             matches.push(src.as_str().to_string());
         }
@@ -53,7 +54,7 @@ pub async fn process_images(
                         let mime_type = "image/jpeg".to_string();
                         let cursor = Cursor::new(processed_data);
                         let res_part = EpubPart::Resource {
-                            filename: filename,
+                            filename,
                             content: Box::new(cursor),
                             mime_type,
                         };
