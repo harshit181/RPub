@@ -12,6 +12,8 @@ mod scheduler;
 mod epub_message;
 mod util;
 
+use tokio_cron_scheduler::JobScheduler;
+
 use crate::db::Feed;
 use axum::{
     extract::{Json, Path, State},
@@ -23,12 +25,15 @@ use axum::{
 use serde::Deserialize;
 use std::net::SocketAddr;
 use std::sync::{Arc, Mutex};
+use tokio::sync::Mutex as TokioMutex;
+
 use base64::Engine;
 use tower_http::services::ServeDir;
 use tracing::{info, warn};
 
 struct AppState {
     db: Arc<Mutex<rusqlite::Connection>>,
+    scheduler: Arc<TokioMutex<JobScheduler>>,
 }
 
 #[derive(Deserialize)]
@@ -48,13 +53,14 @@ async fn main() {
 
     let conn = db::init_db("rpub.db").expect("Failed to initialize database");
     let db_mutex = Arc::new(Mutex::new(conn));
-    let state = Arc::new(AppState {
-        db: db_mutex.clone(),
-    });
-
-    let _sched = scheduler::init_scheduler(db_mutex)
+    let sched = scheduler::init_scheduler(db_mutex.clone())
         .await
         .expect("Failed to initialize scheduler");
+
+    let state = Arc::new(AppState {
+        db: db_mutex.clone(),
+        scheduler: Arc::new(TokioMutex::new(sched)),
+    });
 
     tokio::fs::create_dir_all("static/epubs").await.unwrap();
 
@@ -226,14 +232,34 @@ async fn add_schedule(
     State(state): State<Arc<AppState>>,
     Json(payload): Json<AddScheduleRequest>,
 ) -> Result<StatusCode, (StatusCode, String)> {
-    let db = state.db.lock().map_err(|_| {
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            "DB lock failed".to_string(),
-        )
-    })?;
-    db::add_schedule(&db, &payload.cron_expression)
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    {
+        let db = state.db.lock().map_err(|_| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "DB lock failed".to_string(),
+            )
+        })?;
+        db::add_schedule(&db, &payload.cron_expression)
+            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    }
+    
+    {
+        let mut sched = state.scheduler.lock().await;
+        if let Err(e) = sched.shutdown().await {
+            warn!("Failed to shutdown previous scheduler: {}", e);
+        }
+        match scheduler::init_scheduler(state.db.clone()).await {
+            Ok(new_sched) => *sched = new_sched,
+            Err(e) => {
+                tracing::error!("Failed to restart scheduler: {}", e);
+                return Err((
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "Failed to restart scheduler".to_string(),
+                ));
+            }
+        }
+    }
+
     Ok(StatusCode::CREATED)
 }
 
@@ -241,13 +267,34 @@ async fn delete_schedule(
     State(state): State<Arc<AppState>>,
     Path(id): Path<i64>,
 ) -> Result<StatusCode, (StatusCode, String)> {
-    let db = state.db.lock().map_err(|_| {
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            "DB lock failed".to_string(),
-        )
-    })?;
-    db::delete_schedule(&db, id).map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    {
+        let db = state.db.lock().map_err(|_| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "DB lock failed".to_string(),
+            )
+        })?;
+        db::delete_schedule(&db, id).map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    }
+
+    // Restart scheduler
+    {
+        let mut sched = state.scheduler.lock().await;
+        if let Err(e) = sched.shutdown().await {
+            warn!("Failed to shutdown previous scheduler: {}", e);
+        }
+        match scheduler::init_scheduler(state.db.clone()).await {
+            Ok(new_sched) => *sched = new_sched,
+            Err(e) => {
+                tracing::error!("Failed to restart scheduler: {}", e);
+                return Err((
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "Failed to restart scheduler".to_string(),
+                ));
+            }
+        }
+    }
+
     Ok(StatusCode::NO_CONTENT)
 }
 
