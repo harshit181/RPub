@@ -1,12 +1,12 @@
 use anyhow::Result;
-use image::{DynamicImage, ImageFormat};
+use image::ImageFormat;
 use regex::Regex;
 use reqwest::Client;
 use std::io::Cursor;
-use tokio::{sync::mpsc::Sender, task::JoinSet};
+use tokio::sync::mpsc::Sender;
 
 use crate::epub_message::{CompletionMessage, EpubPart};
-use tracing::{error, info, warn};
+use tracing::info;
 use uuid::Uuid;
 
 pub async fn process_images(
@@ -71,7 +71,7 @@ pub async fn process_images(
                         drop(tx_m);
                         Ok("Completed")
                     }
-                    Err(e) => {
+                    Err(_e) => {
                         if let Err(_) = tx_m
                             .send(CompletionMessage {
                                 sequence_id: sq,
@@ -85,7 +85,7 @@ pub async fn process_images(
                         Err("Failed")
                     }
                 },
-                Err(e) => {
+                Err(_e) => {
                     if let Err(_) = tx_m
                         .send(CompletionMessage {
                             sequence_id: sq,

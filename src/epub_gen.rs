@@ -1,3 +1,4 @@
+use crate::epub_message::EpubPart;
 use crate::feed::Article;
 use crate::image::process_images;
 use ammonia::Builder;
@@ -5,19 +6,18 @@ use anyhow::Result;
 use chrono::Utc;
 use epub_builder::{EpubBuilder, EpubContent, EpubVersion, ReferenceType, ZipLibrary};
 use regex::Regex;
-use std::io::{Read, Seek, SeekFrom, Write};
-use std::sync::Arc;
+use std::io::{Seek, SeekFrom, Write};
 use std::sync::atomic::{AtomicUsize, Ordering};
-use tokio::{sync::mpsc::Sender, task::JoinSet};
+use std::sync::Arc;
+use tokio::task::JoinSet;
 use tracing::info;
-use crate::epub_message::EpubPart;
 
 pub async fn generate_epub_data<W: Write + Seek + Send + 'static>(
     articles: &[Article],
     output: W,
 ) -> Result<()> {
-    use std::collections::HashMap;
     use crate::epub_message::{CompletionMessage, EpubPart};
+    use std::collections::HashMap;
     let mut articles_by_source: HashMap<String, Vec<&Article>> = HashMap::new();
     for article in articles {
         articles_by_source
@@ -62,7 +62,7 @@ pub async fn generate_epub_data<W: Write + Seek + Send + 'static>(
     let (tx, mut rx) = tokio::sync::mpsc::channel::<CompletionMessage>(32);
     let (tx_m, mut rx_m) = tokio::sync::mpsc::channel::<CompletionMessage>(32);
     let counter = Arc::new(AtomicUsize::new(0));
-    let counter_again =Arc::clone(&counter);
+    let counter_again = Arc::clone(&counter);
     let builder_handle = tokio::task::spawn_blocking(move || -> Result<()> {
         let mut builder =
             EpubBuilder::new(ZipLibrary::new().map_err(|e| anyhow::anyhow!("{}", e))?)
@@ -106,12 +106,12 @@ pub async fn generate_epub_data<W: Write + Seek + Send + 'static>(
                 break;
             }
         }
-        current_seq=0;
-        let total_images= &counter_again.load(Ordering::Relaxed);
-        info!("Total images are {}",&total_images);
+        current_seq = 0;
+        let total_images = &counter_again.load(Ordering::Relaxed);
+        info!("Total images are {}", &total_images);
         while let Some(msg) = rx_m.blocking_recv() {
-            info!("Got image with seq id {} {}", msg.sequence_id ,&current_seq);
-            let parts =msg.parts;
+            info!("Got image with seq id {} {}", msg.sequence_id, &current_seq);
+            let parts = msg.parts;
             populate_epub_data(&mut builder, parts)?;
             current_seq += 1;
             if current_seq >= *total_images {
@@ -255,7 +255,7 @@ pub async fn generate_epub_data<W: Write + Seek + Send + 'static>(
     Ok(())
 }
 
-fn populate_epub_data(mut builder: &mut EpubBuilder<ZipLibrary>, parts: Vec<EpubPart>) -> Result<()> {
+fn populate_epub_data(builder: &mut EpubBuilder<ZipLibrary>, parts: Vec<EpubPart>) -> Result<()> {
     for part in parts {
         match part {
             EpubPart::Content {
@@ -264,8 +264,7 @@ fn populate_epub_data(mut builder: &mut EpubBuilder<ZipLibrary>, parts: Vec<Epub
                 content,
                 reftype,
             } => {
-                let mut content =
-                    EpubContent::new(filename, content.as_bytes()).title(title);
+                let mut content = EpubContent::new(filename, content.as_bytes()).title(title);
                 if let Some(rt) = reftype {
                     content = content.reftype(rt);
                 }

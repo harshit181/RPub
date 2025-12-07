@@ -9,7 +9,18 @@
 </head>
 
 <body>
-    <div class="container">
+    <div id="login-overlay" class="hidden">
+        <div id="login-box">
+            <h2>Login Required</h2>
+            <form id="login-form">
+                <input type="text" id="username" placeholder="Username" required>
+                <input type="password" id="password" placeholder="Password" required>
+                <button type="submit">Login</button>
+            </form>
+            <p id="login-error" style="color: red;"></p>
+        </div>
+    </div>
+    <div class="container hidden">
         <header>
             <h1>RPub</h1>
             <p>RSS Aggregator & EPUB Generator</p>
@@ -63,25 +74,79 @@
     </div>
 
     <script>
+        let authHeader = localStorage.getItem('rpub_auth');
+
         // API Helpers
         async function api(url, method = 'GET', body = null) {
-            const options = { method, headers: { 'Content-Type': 'application/json' } };
+            const headers = { 'Content-Type': 'application/json' };
+            if (authHeader) {
+                headers['Authorization'] = authHeader;
+            }
+
+            const options = { method, headers };
             if (body) options.body = JSON.stringify(body);
+
             const res = await fetch(url, options);
+
+            if (res.status === 401) {
+                showLogin();
+                throw new Error("Unauthorized");
+            }
+
             if (!res.ok) throw new Error(await res.text());
             return res.json().catch(() => { });
         }
 
+        function showLogin() {
+            document.getElementById('login-overlay').classList.remove('hidden');
+            document.querySelector('.container').classList.add('hidden');
+        }
+
+        function hideLogin() {
+            document.getElementById('login-overlay').classList.add('hidden');
+            document.querySelector('.container').classList.remove('hidden');
+        }
+
+        async function handleLogin(e) {
+            e.preventDefault();
+            const u = document.getElementById('username').value;
+            const p = document.getElementById('password').value;
+            const creds = 'Basic ' + btoa(u + ':' + p);
+
+            try {
+                // Verify credentials
+                const res = await fetch('/auth/check', {
+                    headers: { 'Authorization': creds }
+                });
+
+                if (res.ok) {
+                    authHeader = creds;
+                    localStorage.setItem('rpub_auth', creds);
+                    hideLogin();
+                    // Reload data
+                    loadFeeds();
+                    loadSchedules();
+                    loadDownloads();
+                } else {
+                    document.getElementById('login-error').textContent = "Invalid credentials";
+                }
+            } catch (err) {
+                document.getElementById('login-error').textContent = "Login failed";
+            }
+        }
+
         // Feeds
         async function loadFeeds() {
-            const feeds = await api('/feeds');
-            const list = document.getElementById('feeds-list');
-            list.innerHTML = feeds.map(f => `
-                <li>
-                    <span>${f.name || f.url} <small>(${f.concurrency_limit === 0 ? 'Unlimited' : f.concurrency_limit + ' threads'})</small></span>
-                    <button onclick="deleteFeed(${f.id})" class="delete-btn">×</button>
-                </li>
-            `).join('');
+            try {
+                const feeds = await api('/feeds');
+                const list = document.getElementById('feeds-list');
+                list.innerHTML = feeds.map(f => `
+                    <li>
+                        <span>${f.name || f.url} <small>(${f.concurrency_limit === 0 ? 'Unlimited' : f.concurrency_limit + ' threads'})</small></span>
+                        <button onclick="deleteFeed(${f.id})" class="delete-btn">×</button>
+                    </li>
+                `).join('');
+            } catch (e) { console.error(e); }
         }
 
         async function addFeed(e) {
@@ -105,14 +170,16 @@
 
         // Schedules
         async function loadSchedules() {
-            const schedules = await api('/schedules');
-            const list = document.getElementById('schedules-list');
-            list.innerHTML = schedules.map(s => `
-                <li>
-                    <span>${s.cron_expression}</span>
-                    <button onclick="deleteSchedule(${s.id})" class="delete-btn">×</button>
-                </li>
-            `).join('');
+            try {
+                const schedules = await api('/schedules');
+                const list = document.getElementById('schedules-list');
+                list.innerHTML = schedules.map(s => `
+                    <li>
+                        <span>${s.cron_expression}</span>
+                        <button onclick="deleteSchedule(${s.id})" class="delete-btn">×</button>
+                    </li>
+                `).join('');
+            } catch (e) { console.error(e); }
         }
 
         async function addSchedule(e) {
@@ -134,13 +201,15 @@
 
         // Downloads
         async function loadDownloads() {
-            const files = await api('/downloads');
-            const list = document.getElementById('downloads-list');
-            list.innerHTML = files.map(f => `
-                <li>
-                    <a href="/epubs/${f}" download>${f}</a>
-                </li>
-            `).join('');
+            try {
+                const files = await api('/downloads');
+                const list = document.getElementById('downloads-list');
+                list.innerHTML = files.map(f => `
+                    <li>
+                        <a href="/epubs/${f}" download>${f}</a>
+                    </li>
+                `).join('');
+            } catch (e) { console.error(e); }
         }
 
         // Generate
@@ -153,7 +222,10 @@
             try {
                 const res = await fetch('/generate', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...(authHeader ? { 'Authorization': authHeader } : {})
+                    },
                     body: JSON.stringify({ feeds: [] }) // Empty list triggers DB fetch
                 });
 
@@ -169,6 +241,9 @@
                             status.textContent = 'Generation started. Check downloads list below.';
                         }
                     }, 2000);
+                } else if (res.status === 401) {
+                    showLogin();
+                    status.textContent = 'Authentication required.';
                 } else {
                     status.textContent = 'Error: ' + await res.text();
                 }
@@ -179,14 +254,27 @@
             }
         }
 
+        // Check Auth on Init
+        async function checkAuth() {
+            try {
+                await api('/auth/check');
+                // If success, load data and show container
+                document.querySelector('.container').classList.remove('hidden');
+                loadFeeds();
+                loadSchedules();
+                loadDownloads();
+            } catch (e) {
+                // api() handles 401 by showing login
+            }
+        }
+
         // Init
+        document.getElementById('login-form').addEventListener('submit', handleLogin);
         document.getElementById('add-feed-form').addEventListener('submit', addFeed);
         document.getElementById('add-schedule-form').addEventListener('submit', addSchedule);
         document.getElementById('generate-btn').addEventListener('click', generate);
 
-        loadFeeds();
-        loadSchedules();
-        loadDownloads();
+        checkAuth();
     </script>
 </body>
 

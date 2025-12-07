@@ -22,8 +22,9 @@ use axum::{
 use serde::Deserialize;
 use std::net::SocketAddr;
 use std::sync::{Arc, Mutex};
+use base64::Engine;
 use tower_http::services::ServeDir;
-use tracing::info;
+use tracing::{info, warn};
 
 struct AppState {
     db: Arc<Mutex<rusqlite::Connection>>,
@@ -56,14 +57,29 @@ async fn main() {
 
     tokio::fs::create_dir_all("static/epubs").await.unwrap();
 
-    let app = Router::new()
+    let public_routes = Router::new()
+        .route("/opds", get(opds_handler));
+
+    let protected_routes = Router::new()
         .route("/generate", post(generate_handler))
         .route("/feeds", get(list_feeds).post(add_feed))
         .route("/feeds/{id}", delete(delete_feed))
         .route("/schedules", get(list_schedules).post(add_schedule))
         .route("/schedules/{id}", delete(delete_schedule))
         .route("/downloads", get(list_downloads))
-        .route("/opds", get(opds_handler))
+        .route("/auth/check", get(|| async { StatusCode::OK }));
+
+    let protected_routes = if std::env::var("RPUB_USERNAME").is_ok() && std::env::var("RPUB_PASSWORD").is_ok() {
+        info!("Authentication enabled");
+        protected_routes.layer(axum::middleware::from_fn(auth))
+    } else {
+        warn!("Authentication disabled (RPUB_USERNAME and/or RPUB_PASSWORD not set)");
+        protected_routes
+    };
+
+    let app = Router::new()
+        .merge(public_routes)
+        .merge(protected_routes)
         .fallback_service(ServeDir::new("static"))
         .with_state(state);
 
@@ -278,4 +294,37 @@ async fn generate_handler(
 
     // 3. Return Accepted
     Ok(StatusCode::ACCEPTED)
+}
+
+async fn auth(
+    req: axum::extract::Request,
+    next: axum::middleware::Next,
+) -> axum::response::Response {
+    let auth_header = req
+        .headers()
+        .get(header::AUTHORIZATION)
+        .and_then(|header| header.to_str().ok());
+
+    let username = std::env::var("RPUB_USERNAME").unwrap_or_default();
+    let password = std::env::var("RPUB_PASSWORD").unwrap_or_default();
+
+    if let Some(auth_header) = auth_header {
+        if let Some(token) = auth_header.strip_prefix("Basic ") {
+            if let Ok(decoded) = base64::engine::general_purpose::STANDARD.decode(token) {
+                if let Ok(credentials) = String::from_utf8(decoded) {
+                    if let Some((u, p)) = credentials.split_once(':') {
+                        if u == username && p == password {
+                            return next.run(req).await.into_response();
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Return 401 WITHOUT the WWW-Authenticate header to prevent browser popup
+    (
+        StatusCode::UNAUTHORIZED,
+        "Unauthorized".to_string(),
+    ).into_response()
 }
