@@ -9,12 +9,9 @@ reqwest = { version = "0.12.24", features = ["json", "blocking", "cookies"] } # 
 tokio = { version = "1.48", features = ["full"] }
 epub-builder = "0.8.1"
 chrono = { version = "0.4", features = ["serde"] }
-clap = { version = "4.0", features = ["derive"] }
 serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
 anyhow = "1.0" # For error handling
 axum = "0.8.7"
-tower = { version = "0.4", features = ["util"] }
 tower-http = { version = "0.5", features = ["fs", "trace"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
@@ -26,6 +23,7 @@ regex = "1.10"
 ammonia = "4.1.2"
 tempfile = "3.23.0"
 image = "0.24"
+uuid = { version = "1.19.0 ",features = ["v4", ] }
 
 [features]
 default = []
