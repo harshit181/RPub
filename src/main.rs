@@ -1,5 +1,6 @@
 mod db;
 mod epub_gen;
+mod epub_message;
 mod feed;
 #[cfg(feature = "mem_opt")]
 mod image;
@@ -9,7 +10,6 @@ mod image;
 mod opds;
 mod processor;
 mod scheduler;
-mod epub_message;
 mod util;
 
 use tokio_cron_scheduler::JobScheduler;
@@ -31,6 +31,11 @@ use base64::Engine;
 use tower_http::services::ServeDir;
 use tracing::{info, warn};
 
+#[cfg(feature = "alternative-alloc")]
+#[global_allocator]
+static GLOBAL: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;
+
+
 struct AppState {
     db: Arc<Mutex<rusqlite::Connection>>,
     scheduler: Arc<TokioMutex<JobScheduler>>,
@@ -46,6 +51,8 @@ struct GenerateRequest {
 async fn main() {
     #[cfg(feature = "mem_opt")]
     let _vips_app = libvips::VipsApp::new("rpub", false).expect("Failed to initialize libvips");
+    #[cfg(feature = "alternative-alloc")]
+    tikv_jemalloc_ctl::background_thread::write(true).expect("failed to enable background threads");
 
     let filter = tracing_subscriber::EnvFilter::try_from_default_env()
         .unwrap_or_else(|_| "info,html5ever=error".into());
@@ -64,8 +71,7 @@ async fn main() {
 
     tokio::fs::create_dir_all("static/epubs").await.unwrap();
 
-    let public_routes = Router::new()
-        .route("/opds", get(opds_handler));
+    let public_routes = Router::new().route("/opds", get(opds_handler));
 
     let protected_routes = Router::new()
         .route("/generate", post(generate_handler))
@@ -76,13 +82,14 @@ async fn main() {
         .route("/downloads", get(list_downloads))
         .route("/auth/check", get(|| async { StatusCode::OK }));
 
-    let protected_routes = if std::env::var("RPUB_USERNAME").is_ok() && std::env::var("RPUB_PASSWORD").is_ok() {
-        info!("Authentication enabled");
-        protected_routes.layer(axum::middleware::from_fn(auth))
-    } else {
-        warn!("Authentication disabled (RPUB_USERNAME and/or RPUB_PASSWORD not set)");
-        protected_routes
-    };
+    let protected_routes =
+        if std::env::var("RPUB_USERNAME").is_ok() && std::env::var("RPUB_PASSWORD").is_ok() {
+            info!("Authentication enabled");
+            protected_routes.layer(axum::middleware::from_fn(auth))
+        } else {
+            warn!("Authentication disabled (RPUB_USERNAME and/or RPUB_PASSWORD not set)");
+            protected_routes
+        };
 
     let app = Router::new()
         .merge(public_routes)
@@ -242,7 +249,7 @@ async fn add_schedule(
         db::add_schedule(&db, &payload.cron_expression)
             .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
     }
-    
+
     {
         let mut sched = state.scheduler.lock().await;
         if let Err(e) = sched.shutdown().await {
@@ -274,7 +281,8 @@ async fn delete_schedule(
                 "DB lock failed".to_string(),
             )
         })?;
-        db::delete_schedule(&db, id).map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+        db::delete_schedule(&db, id)
+            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
     }
 
     // Restart scheduler
@@ -371,8 +379,5 @@ async fn auth(
     }
 
     // Return 401 WITHOUT the WWW-Authenticate header to prevent browser popup
-    (
-        StatusCode::UNAUTHORIZED,
-        "Unauthorized".to_string(),
-    ).into_response()
+    (StatusCode::UNAUTHORIZED, "Unauthorized".to_string()).into_response()
 }

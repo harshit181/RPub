@@ -26,7 +26,10 @@ image = "0.25.9"
 uuid = { version = "1.19.0 ",features = ["v4", ] }
 base64 = "0.22.1"
 indicatif = "0.18.3"
+tikv-jemallocator = {version ="0.6.1",optional = true }
+tikv-jemalloc-ctl = {version ="0.6.1",optional = true }
 
 [features]
 default = []
 mem_opt = ["dep:libvips"]
+alternative-alloc = ["tikv-jemallocator","tikv-jemalloc-ctl"]

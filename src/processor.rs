@@ -1,9 +1,9 @@
-use std::path::PathBuf;
 use crate::db::Feed;
 use crate::{epub_gen, feed};
 use anyhow::Result;
 use chrono::{Duration as ChronoDuration, Utc};
 use rusqlite::Connection;
+use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use tracing::info;
 
@@ -22,7 +22,7 @@ pub async fn generate_epub(
         return Err(anyhow::anyhow!("No articles found in the last 24 hours."));
     }
 
-    let temp_path = getTempFilePath(output_path);
+    let temp_path = get_temp_file_path(output_path);
     info!("Generating EPUB to temporary file: {:?}", temp_path);
     let file = std::fs::File::create(&temp_path)?;
 
@@ -41,7 +41,7 @@ pub async fn generate_epub(
     Ok(())
 }
 
-fn getTempFilePath(output_path: &str) -> PathBuf {
+fn get_temp_file_path(output_path: &str) -> PathBuf {
     let output_path_obj = std::path::Path::new(output_path);
     let parent_dir = output_path_obj
         .parent()
