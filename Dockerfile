@@ -9,7 +9,7 @@ RUN apt-get update && apt-get install -y pkg-config libssl-dev build-essential &
 # Copy source code
 COPY . .
 
-# Build release binary
+# Build / binary
 RUN cargo build --release --features alternative-alloc
 
 # Runtime Stage
@@ -27,7 +27,7 @@ COPY --from=builder /usr/src/rpub/target/release/rpub /usr/local/bin/rpub
 COPY static /app/static
 
 # Copy database
-COPY rpub.db /app/rpub.db
+#COPY rpub.db /app/rpub.db
 
 # Expose port
 EXPOSE 3000
