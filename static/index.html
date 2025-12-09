@@ -1,281 +1,436 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>RPub - RSS to EPUB</title>
+        <link rel="stylesheet" href="style.css" />
+    </head>
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RPub - RSS to EPUB</title>
-    <link rel="stylesheet" href="style.css">
-</head>
-
-<body>
-    <div id="login-overlay" class="hidden">
-        <div id="login-box">
-            <h2>Login Required</h2>
-            <form id="login-form">
-                <input type="text" id="username" placeholder="Username" required>
-                <input type="password" id="password" placeholder="Password" required>
-                <button type="submit">Login</button>
-            </form>
-            <p id="login-error" style="color: red;"></p>
+    <body>
+        <div id="login-overlay" class="hidden">
+            <div id="login-box">
+                <h2>Login Required</h2>
+                <form id="login-form">
+                    <input
+                        type="text"
+                        id="username"
+                        placeholder="Username"
+                        required
+                    />
+                    <input
+                        type="password"
+                        id="password"
+                        placeholder="Password"
+                        required
+                    />
+                    <button type="submit">Login</button>
+                </form>
+                <p id="login-error" style="color: red"></p>
+            </div>
         </div>
-    </div>
-    <div class="container hidden">
-        <header>
-            <h1>RPub</h1>
-            <p>RSS Aggregator & EPUB Generator</p>
-        </header>
+        <div class="container hidden">
+            <header>
+                <h1>RPub</h1>
+                <p>RSS Aggregator & EPUB Generator</p>
+            </header>
 
-        <main>
-            <!-- Feeds Section -->
-            <section id="feeds-section">
-                <h2>Feeds</h2>
-                <ul id="feeds-list" class="item-list"></ul>
-                <form id="add-feed-form">
-                    <input type="url" name="url" placeholder="Feed URL" required>
-                    <input type="text" name="name" placeholder="Name (Optional)">
-                    <input type="number" name="concurrency_limit" placeholder="Limit (0=Unl)" min="0"
-                        style="width: 100px;">
-                    <button type="submit">Add Feed</button>
-                </form>
-            </section>
+            <main>
+                <!-- Feeds Section -->
+                <section id="feeds-section">
+                    <h2>Feeds</h2>
+                    <ul id="feeds-list" class="item-list"></ul>
+                    <form id="add-feed-form">
+                        <input
+                            type="url"
+                            name="url"
+                            placeholder="Feed URL"
+                            required
+                        />
+                        <input
+                            type="text"
+                            name="name"
+                            placeholder="Name (Optional)"
+                        />
+                        <input
+                            type="number"
+                            name="concurrency_limit"
+                            placeholder="Limit (0=Unl)"
+                            min="0"
+                            style="width: 100px"
+                        />
+                        <button type="submit">Add Feed</button>
+                    </form>
+                </section>
 
-            <hr>
+                <hr />
 
-            <!-- Schedules Section -->
-            <section id="schedules-section">
-                <h2>Schedules</h2>
-                <ul id="schedules-list" class="item-list"></ul>
-                <form id="add-schedule-form">
-                    <input type="text" name="cron_expression" placeholder="Cron Expression (e.g., 0 0 8 * * *)"
-                        required>
-                    <button type="submit">Add Schedule</button>
-                </form>
-                <p class="hint">Format: sec min hour day_of_month month day_of_week year</p>
-            </section>
+                <!-- Schedules Section -->
+                <section id="schedules-section">
+                    <h2>Schedules</h2>
+                    <ul id="schedules-list" class="item-list"></ul>
+                    <form id="add-schedule-form">
+                        <input
+                            type="text"
+                            name="cron_expression"
+                            placeholder="Cron Expression (e.g., 0 0 8 * * *)"
+                            required
+                        />
+                        <button type="submit">Add Schedule</button>
+                    </form>
+                    <p class="hint">
+                        Format: sec min hour day_of_month month day_of_week year
+                    </p>
+                </section>
 
-            <hr>
+                <hr />
 
-            <!-- Generate Section -->
-            <section id="generate-section">
-                <h2>Manual Generation</h2>
-                <button id="generate-btn">Generate EPUB Now</button>
-                <div id="status"></div>
-            </section>
+                <!-- Generate Section -->
+                <section id="generate-section">
+                    <h2>Manual Generation</h2>
+                    <button id="generate-btn">Generate EPUB Now</button>
+                    <div id="status"></div>
+                </section>
 
-            <hr>
+                <hr />
 
-            <!-- Downloads Section -->
-            <section id="downloads-section">
-                <h2>Downloads</h2>
-                <ul id="downloads-list" class="item-list"></ul>
-            </section>
-        </main>
-    </div>
+                <!-- Cover Image Section -->
+                <section id="cover-section">
+                    <h2>Cover Image</h2>
+                    <div class="cover-wrapper">
+                        <div class="current-cover">
+                            <h3>Current Cover</h3>
+                            <!-- Add timestamp to bust cache -->
+                            <img
+                                id="cover-preview"
+                                src="/cover.jpg"
+                                alt="Book Cover"
+                                style="max-width: 200px; border: 1px solid #ccc"
+                            />
+                        </div>
+                        <div class="upload-cover">
+                            <h3>Replace Cover</h3>
+                            <form id="upload-cover-form">
+                                <input
+                                    type="file"
+                                    id="cover-file"
+                                    name="cover"
+                                    accept="image/jpeg"
+                                    required
+                                />
+                                <button type="submit">Upload New Cover</button>
+                                <div id="upload-status"></div>
+                            </form>
+                        </div>
+                    </div>
+                </section>
 
-    <script>
-        let authHeader = localStorage.getItem('rpub_auth');
+                <hr />
 
-        // API Helpers
-        async function api(url, method = 'GET', body = null) {
-            const headers = { 'Content-Type': 'application/json' };
-            if (authHeader) {
-                headers['Authorization'] = authHeader;
-            }
+                <!-- Downloads Section -->
+                <section id="downloads-section">
+                    <h2>Downloads</h2>
+                    <ul id="downloads-list" class="item-list"></ul>
+                </section>
+            </main>
+        </div>
 
-            const options = { method, headers };
-            if (body) options.body = JSON.stringify(body);
+        <script>
+            let authHeader = localStorage.getItem("rpub_auth");
 
-            const res = await fetch(url, options);
-
-            if (res.status === 401) {
-                showLogin();
-                throw new Error("Unauthorized");
-            }
-
-            if (!res.ok) throw new Error(await res.text());
-            return res.json().catch(() => { });
-        }
-
-        function showLogin() {
-            document.getElementById('login-overlay').classList.remove('hidden');
-            document.querySelector('.container').classList.add('hidden');
-        }
-
-        function hideLogin() {
-            document.getElementById('login-overlay').classList.add('hidden');
-            document.querySelector('.container').classList.remove('hidden');
-        }
-
-        async function handleLogin(e) {
-            e.preventDefault();
-            const u = document.getElementById('username').value;
-            const p = document.getElementById('password').value;
-            const creds = 'Basic ' + btoa(u + ':' + p);
-
-            try {
-                // Verify credentials
-                const res = await fetch('/auth/check', {
-                    headers: { 'Authorization': creds }
-                });
-
-                if (res.ok) {
-                    authHeader = creds;
-                    localStorage.setItem('rpub_auth', creds);
-                    hideLogin();
-                    // Reload data
-                    loadFeeds();
-                    loadSchedules();
-                    loadDownloads();
-                } else {
-                    document.getElementById('login-error').textContent = "Invalid credentials";
+            // API Helpers
+            async function api(url, method = "GET", body = null) {
+                const headers = { "Content-Type": "application/json" };
+                if (authHeader) {
+                    headers["Authorization"] = authHeader;
                 }
-            } catch (err) {
-                document.getElementById('login-error').textContent = "Login failed";
-            }
-        }
 
-        // Feeds
-        async function loadFeeds() {
-            try {
-                const feeds = await api('/feeds');
-                const list = document.getElementById('feeds-list');
-                list.innerHTML = feeds.map(f => `
+                const options = { method, headers };
+                if (body) options.body = JSON.stringify(body);
+
+                const res = await fetch(url, options);
+
+                if (res.status === 401) {
+                    showLogin();
+                    throw new Error("Unauthorized");
+                }
+
+                if (!res.ok) throw new Error(await res.text());
+                return res.json().catch(() => {});
+            }
+
+            function showLogin() {
+                document
+                    .getElementById("login-overlay")
+                    .classList.remove("hidden");
+                document.querySelector(".container").classList.add("hidden");
+            }
+
+            function hideLogin() {
+                document
+                    .getElementById("login-overlay")
+                    .classList.add("hidden");
+                document.querySelector(".container").classList.remove("hidden");
+            }
+
+            async function handleLogin(e) {
+                e.preventDefault();
+                const u = document.getElementById("username").value;
+                const p = document.getElementById("password").value;
+                const creds = "Basic " + btoa(u + ":" + p);
+
+                try {
+                    // Verify credentials
+                    const res = await fetch("/auth/check", {
+                        headers: { Authorization: creds },
+                    });
+
+                    if (res.ok) {
+                        authHeader = creds;
+                        localStorage.setItem("rpub_auth", creds);
+                        hideLogin();
+                        // Reload data
+                        loadFeeds();
+                        loadSchedules();
+                        loadDownloads();
+                    } else {
+                        document.getElementById("login-error").textContent =
+                            "Invalid credentials";
+                    }
+                } catch (err) {
+                    document.getElementById("login-error").textContent =
+                        "Login failed";
+                }
+            }
+
+            // Feeds
+            async function loadFeeds() {
+                try {
+                    const feeds = await api("/feeds");
+                    const list = document.getElementById("feeds-list");
+                    list.innerHTML = feeds
+                        .map(
+                            (f) => `
                     <li>
-                        <span>${f.name || f.url} <small>(${f.concurrency_limit === 0 ? 'Unlimited' : f.concurrency_limit + ' threads'})</small></span>
+                        <span>${f.name || f.url} <small>(${f.concurrency_limit === 0 ? "Unlimited" : f.concurrency_limit + " threads"})</small></span>
                         <button onclick="deleteFeed(${f.id})" class="delete-btn">×</button>
                     </li>
-                `).join('');
-            } catch (e) { console.error(e); }
-        }
+                `,
+                        )
+                        .join("");
+                } catch (e) {
+                    console.error(e);
+                }
+            }
 
-        async function addFeed(e) {
-            e.preventDefault();
-            const formData = new FormData(e.target);
-            await api('/feeds', 'POST', {
-                url: formData.get('url'),
-                name: formData.get('name') || null,
-                concurrency_limit: parseInt(formData.get('concurrency_limit') || '0', 10)
-            });
-            e.target.reset();
-            loadFeeds();
-        }
-
-        async function deleteFeed(id) {
-            if (confirm('Delete this feed?')) {
-                await api(`/feeds/${id}`, 'DELETE');
+            async function addFeed(e) {
+                e.preventDefault();
+                const formData = new FormData(e.target);
+                await api("/feeds", "POST", {
+                    url: formData.get("url"),
+                    name: formData.get("name") || null,
+                    concurrency_limit: parseInt(
+                        formData.get("concurrency_limit") || "0",
+                        10,
+                    ),
+                });
+                e.target.reset();
                 loadFeeds();
             }
-        }
 
-        // Schedules
-        async function loadSchedules() {
-            try {
-                const schedules = await api('/schedules');
-                const list = document.getElementById('schedules-list');
-                list.innerHTML = schedules.map(s => `
+            async function deleteFeed(id) {
+                if (confirm("Delete this feed?")) {
+                    await api(`/feeds/${id}`, "DELETE");
+                    loadFeeds();
+                }
+            }
+
+            // Schedules
+            async function loadSchedules() {
+                try {
+                    const schedules = await api("/schedules");
+                    const list = document.getElementById("schedules-list");
+                    list.innerHTML = schedules
+                        .map(
+                            (s) => `
                     <li>
                         <span>${s.cron_expression}</span>
                         <button onclick="deleteSchedule(${s.id})" class="delete-btn">×</button>
                     </li>
-                `).join('');
-            } catch (e) { console.error(e); }
-        }
+                `,
+                        )
+                        .join("");
+                } catch (e) {
+                    console.error(e);
+                }
+            }
 
-        async function addSchedule(e) {
-            e.preventDefault();
-            const formData = new FormData(e.target);
-            await api('/schedules', 'POST', {
-                cron_expression: formData.get('cron_expression')
-            });
-            e.target.reset();
-            loadSchedules();
-        }
-
-        async function deleteSchedule(id) {
-            if (confirm('Delete this schedule?')) {
-                await api(`/schedules/${id}`, 'DELETE');
+            async function addSchedule(e) {
+                e.preventDefault();
+                const formData = new FormData(e.target);
+                await api("/schedules", "POST", {
+                    cron_expression: formData.get("cron_expression"),
+                });
+                e.target.reset();
                 loadSchedules();
             }
-        }
 
-        // Downloads
-        async function loadDownloads() {
-            try {
-                const files = await api('/downloads');
-                const list = document.getElementById('downloads-list');
-                list.innerHTML = files.map(f => `
+            async function deleteSchedule(id) {
+                if (confirm("Delete this schedule?")) {
+                    await api(`/schedules/${id}`, "DELETE");
+                    loadSchedules();
+                }
+            }
+
+            // Downloads
+            async function loadDownloads() {
+                try {
+                    const files = await api("/downloads");
+                    const list = document.getElementById("downloads-list");
+                    list.innerHTML = files
+                        .map(
+                            (f) => `
                     <li>
                         <a href="/epubs/${f}" download>${f}</a>
                     </li>
-                `).join('');
-            } catch (e) { console.error(e); }
-        }
-
-        // Generate
-        async function generate() {
-            const btn = document.getElementById('generate-btn');
-            const status = document.getElementById('status');
-            btn.disabled = true;
-            status.textContent = 'Requesting generation...';
-
-            try {
-                const res = await fetch('/generate', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        ...(authHeader ? { 'Authorization': authHeader } : {})
-                    },
-                    body: JSON.stringify({ feeds: [] }) // Empty list triggers DB fetch
-                });
-
-                if (res.ok) {
-                    status.textContent = 'Generation started in background. Please wait...';
-                    // Poll for new downloads every 2 seconds for a while
-                    let checks = 0;
-                    const interval = setInterval(async () => {
-                        checks++;
-                        await loadDownloads();
-                        if (checks > 10) { // Stop auto-refreshing after 20 seconds
-                            clearInterval(interval);
-                            status.textContent = 'Generation started. Check downloads list below.';
-                        }
-                    }, 2000);
-                } else if (res.status === 401) {
-                    showLogin();
-                    status.textContent = 'Authentication required.';
-                } else {
-                    status.textContent = 'Error: ' + await res.text();
+                `,
+                        )
+                        .join("");
+                } catch (e) {
+                    console.error(e);
                 }
-            } catch (e) {
-                status.textContent = 'Error: ' + e.message;
-            } finally {
-                btn.disabled = false;
             }
-        }
 
-        // Check Auth on Init
-        async function checkAuth() {
-            try {
-                await api('/auth/check');
-                // If success, load data and show container
-                document.querySelector('.container').classList.remove('hidden');
-                loadFeeds();
-                loadSchedules();
-                loadDownloads();
-            } catch (e) {
-                // api() handles 401 by showing login
+            // Generate
+            async function generate() {
+                const btn = document.getElementById("generate-btn");
+                const status = document.getElementById("status");
+                btn.disabled = true;
+                status.textContent = "Requesting generation...";
+
+                try {
+                    const res = await fetch("/generate", {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                            ...(authHeader
+                                ? { Authorization: authHeader }
+                                : {}),
+                        },
+                        body: JSON.stringify({ feeds: [] }), // Empty list triggers DB fetch
+                    });
+
+                    if (res.ok) {
+                        status.textContent =
+                            "Generation started in background. Please wait...";
+                        // Poll for new downloads every 2 seconds for a while
+                        let checks = 0;
+                        const interval = setInterval(async () => {
+                            checks++;
+                            await loadDownloads();
+                            if (checks > 10) {
+                                // Stop auto-refreshing after 20 seconds
+                                clearInterval(interval);
+                                status.textContent =
+                                    "Generation started. Check downloads list below.";
+                            }
+                        }, 2000);
+                    } else if (res.status === 401) {
+                        showLogin();
+                        status.textContent = "Authentication required.";
+                    } else {
+                        status.textContent = "Error: " + (await res.text());
+                    }
+                } catch (e) {
+                    status.textContent = "Error: " + e.message;
+                } finally {
+                    btn.disabled = false;
+                }
             }
-        }
 
-        // Init
-        document.getElementById('login-form').addEventListener('submit', handleLogin);
-        document.getElementById('add-feed-form').addEventListener('submit', addFeed);
-        document.getElementById('add-schedule-form').addEventListener('submit', addSchedule);
-        document.getElementById('generate-btn').addEventListener('click', generate);
+            async function uploadCover(e) {
+                e.preventDefault();
+                const form = e.target;
+                const status = document.getElementById("upload-status");
+                const fileInput = document.getElementById("cover-file");
 
-        checkAuth();
-    </script>
-</body>
+                if (fileInput.files.length === 0) return;
 
+                const formData = new FormData();
+                formData.append("cover", fileInput.files[0]);
+
+                status.textContent = "Uploading...";
+
+                try {
+                    // Manually construct fetch to handle FormData with Auth
+                    const headers = {};
+                    if (authHeader) headers["Authorization"] = authHeader;
+                    // do NOT set Content-Type header when sending FormData, let browser set it with boundary
+
+                    const res = await fetch("/cover", {
+                        method: "POST",
+                        headers: headers,
+                        body: formData,
+                    });
+
+                    if (res.ok) {
+                        status.textContent = "Cover updated successfully!";
+                        status.style.color = "green";
+                        // Refresh image with timestamp
+                        document.getElementById("cover-preview").src =
+                            "/cover.jpg?t=" + new Date().getTime();
+                        form.reset();
+                    } else if (res.status === 401) {
+                        showLogin();
+                        status.textContent = "Authentication required.";
+                        status.style.color = "red";
+                    } else {
+                        status.textContent = "Error: " + (await res.text());
+                        status.style.color = "red";
+                    }
+                } catch (err) {
+                    status.textContent = "Error: " + err.message;
+                    status.style.color = "red";
+                }
+            }
+
+            // Check Auth on Init
+            async function checkAuth() {
+                try {
+                    await api("/auth/check");
+                    // If success, load data and show container
+                    document
+                        .querySelector(".container")
+                        .classList.remove("hidden");
+                    loadFeeds();
+                    loadSchedules();
+                    loadDownloads();
+                } catch (e) {
+                    // api() handles 401 by showing login
+                }
+            }
+
+            // Init
+            document
+                .getElementById("login-form")
+                .addEventListener("submit", handleLogin);
+            document
+                .getElementById("add-feed-form")
+                .addEventListener("submit", addFeed);
+            document
+                .getElementById("add-schedule-form")
+                .addEventListener("submit", addSchedule);
+            document
+                .getElementById("add-schedule-form")
+                .addEventListener("submit", addSchedule);
+            document
+                .getElementById("generate-btn")
+                .addEventListener("click", generate);
+            document
+                .getElementById("upload-cover-form")
+                .addEventListener("submit", uploadCover);
+
+            checkAuth();
+        </script>
+    </body>
 </html>

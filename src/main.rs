@@ -16,7 +16,7 @@ use tokio_cron_scheduler::JobScheduler;
 
 use crate::db::Feed;
 use axum::{
-    extract::{Json, Path, State},
+    extract::{Json, Multipart, Path, State},
     http::{header, HeaderMap, StatusCode},
     response::IntoResponse,
     routing::{delete, get, post},
@@ -26,6 +26,7 @@ use serde::Deserialize;
 use std::net::SocketAddr;
 use std::sync::{Arc, Mutex};
 use tokio::sync::Mutex as TokioMutex;
+use tokio::io::AsyncWriteExt;
 
 use base64::Engine;
 use tower_http::services::ServeDir;
@@ -80,6 +81,7 @@ async fn main() {
         .route("/schedules", get(list_schedules).post(add_schedule))
         .route("/schedules/{id}", delete(delete_schedule))
         .route("/downloads", get(list_downloads))
+        .route("/cover", post(upload_cover))
         .route("/auth/check", get(|| async { StatusCode::OK }));
 
     let protected_routes =
@@ -350,6 +352,49 @@ async fn generate_handler(
 
     // 3. Return Accepted
     Ok(StatusCode::ACCEPTED)
+}
+
+async fn upload_cover(mut multipart: Multipart) -> Result<StatusCode, (StatusCode, String)> {
+    while let Some(field) = multipart.next_field().await.map_err(|e| {
+        (
+            StatusCode::BAD_REQUEST,
+            format!("Failed to read multipart field: {}", e),
+        )
+    })? {
+        let name = field.name().unwrap_or("").to_string();
+        if name == "cover" {
+            let data = field.bytes().await.map_err(|e| {
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    format!("Failed to read field bytes: {}", e),
+                )
+            })?;
+
+            if data.is_empty() {
+                return Err((StatusCode::BAD_REQUEST, "Empty file".to_string()));
+            }
+
+            let path = "static/cover.jpg";
+            let mut file = tokio::fs::File::create(path).await.map_err(|e| {
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    format!("Failed to create file: {}", e),
+                )
+            })?;
+
+            file.write_all(&data).await.map_err(|e| {
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    format!("Failed to write file: {}", e),
+                )
+            })?;
+            
+            info!("Cover image updated successfully");
+            return Ok(StatusCode::OK);
+        }
+    }
+
+    Err((StatusCode::BAD_REQUEST, "No cover file found".to_string()))
 }
 
 async fn auth(
