@@ -17,116 +17,118 @@
                 <input type="password" id="password" placeholder="Password" required />
                 <button type="submit">Login</button>
             </form>
-            <p id="login-error" style="color: red"></p>
+            <p id="login-error" style="color: var(--danger)"></p>
         </div>
     </div>
     <div class="container hidden">
         <header>
-            <h1>RPub</h1>
-            <p>RSS Aggregator & EPUB Generator</p>
+            <div class="header-content">
+                <h1>RPub</h1>
+                <p>RSS Aggregator & EPUB Generator</p>
+            </div>
+            <div class="header-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"></path>
+                </svg>
+            </div>
         </header>
 
-        <main>
-            <!-- Feeds Section -->
-            <section id="feeds-section">
-                <h2>Feeds</h2>
-                <ul id="feeds-list" class="item-list"></ul>
-                <form id="add-feed-form">
-                    <input type="url" name="url" placeholder="Feed URL" required />
-                    <input type="text" name="name" placeholder="Name (Optional)" />
-                    <input type="number" name="concurrency_limit" placeholder="Limit (0=Unl)" min="0"
-                        style="width: 100px" />
-                    <button type="submit">Add Feed</button>
-                </form>
-            </section>
+        <main class="dashboard-grid">
+            <div class="column">
 
-            <hr />
+                <section id="feeds-section" class="card">
+                    <h2>Feeds</h2>
+                    <ul id="feeds-list" class="item-list"></ul>
+                    <form id="add-feed-form">
+                        <div class="input-group">
+                            <input type="url" name="url" placeholder="Feed URL" required />
+                            <input type="text" name="name" placeholder="Name (Optional)" />
+                        </div>
+                        <div class="input-group">
+                            <input type="number" name="concurrency_limit" placeholder="Limit (0=Unl)" min="0" />
+                            <button type="submit" class="add-btn">Add Feed</button>
+                        </div>
+                    </form>
+                </section>
+            </div>
 
-            <!-- Schedules Section -->
-            <section id="schedules-section">
-                <h2>Schedules</h2>
-                <ul id="schedules-list" class="item-list"></ul>
-                <form id="add-schedule-form">
-                    <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
-                        <select name="hour" required style="padding: 5px;">
-                            <option value="" disabled selected>Hour</option>
-                            <script>
-                                for (let i = 0; i < 24; i++) {
-                                    const val = i.toString().padStart(2, '0');
-                                    document.write(`<option value="${val}">${val}</option>`);
-                                }
-                            </script>
-                        </select>
-                        :
-                        <select name="minute" required style="padding: 5px;">
-                            <option value="" disabled selected>Min</option>
-                            <script>
-                                for (let i = 0; i < 60; i += 5) {
-                                    const val = i.toString().padStart(2, '0');
-                                    document.write(`<option value="${val}">${val}</option>`);
-                                }
-                            </script>
-                        </select>
+            <div class="column">
 
-                        <select name="timezone" id="timezone-select" required style="padding: 5px; max-width: 200px;">
-                            <option value="" disabled selected>Timezone</option>
-                        </select>
-                    </div>
-                    <div style="margin-top: 10px;">
-                        <button type="submit">Add Schedule</button>
-                    </div>
-                </form>
-                <p class="hint">
-                    Selected time will be converted to GMT for the scheduler.
-                </p>
-            </section>
+                <section id="generate-section" class="card">
+                    <h2>Manual Generation</h2>
+                    <button id="generate-btn">Generate EPUB Now</button>
+                    <div id="status"></div>
+                </section>
 
-            <hr />
 
-            <!-- Generate Section -->
-            <section id="generate-section">
-                <h2>Manual Generation</h2>
-                <button id="generate-btn">Generate EPUB Now</button>
-                <div id="status"></div>
-            </section>
+                <section id="schedules-section" class="card">
+                    <h2>Schedules</h2>
+                    <ul id="schedules-list" class="item-list"></ul>
+                    <form id="add-schedule-form">
+                        <div class="time-row">
+                            <select name="hour" required>
+                                <option value="" disabled selected>Hour</option>
+                                <script>
+                                    for (let i = 0; i < 24; i++) {
+                                        const val = i.toString().padStart(2, '0');
+                                        document.write(`<option value="${val}">${val}</option>`);
+                                    }
+                                </script>
+                            </select>
+                            <span>:</span>
+                            <select name="minute" required>
+                                <option value="" disabled selected>Min</option>
+                                <script>
+                                    for (let i = 0; i < 60; i += 5) {
+                                        const val = i.toString().padStart(2, '0');
+                                        document.write(`<option value="${val}">${val}</option>`);
+                                    }
+                                </script>
+                            </select>
+                            <select name="timezone" id="timezone-select" required>
+                                <option value="" disabled selected>Timezone</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="add-btn">Add Schedule</button>
+                    </form>
+                    <p class="hint">
+                        Selected time will be converted to GMT for the scheduler.
+                    </p>
+                </section>
 
-            <hr />
 
-            <!-- Cover Image Section -->
-            <section id="cover-section">
-                <h2>Cover Image</h2>
-                <div class="cover-wrapper">
-                    <div class="current-cover">
-                        <h3>Current Cover</h3>
-                        <!-- Add timestamp to bust cache -->
-                        <img id="cover-preview" src="/cover.jpg" alt="Book Cover"
-                            style="max-width: 200px; border: 1px solid #ccc" />
-                    </div>
-                    <div class="upload-cover">
-                        <h3>Replace Cover</h3>
-                        <form id="upload-cover-form">
-                            <input type="file" id="cover-file" name="cover" accept="image/jpeg" required />
-                            <button type="submit">Upload New Cover</button>
+                <section id="cover-section" class="card">
+                    <h2>Cover Image</h2>
+                    <div class="cover-wrapper">
+                        <div class="current-cover">
+
+                            <img id="cover-preview" src="/cover.jpg" alt="Book Cover" />
+                        </div>
+                        <div class="upload-cover">
+                            <h3>Replace Cover</h3>
+                            <form id="upload-cover-form">
+                                <input type="file" id="cover-file" name="cover" accept="image/jpeg" required />
+                                <button type="submit" class="add-btn">Upload New Cover</button>
+                            </form>
                             <div id="upload-status"></div>
-                        </form>
+                        </div>
                     </div>
-                </div>
-            </section>
+                </section>
 
-            <hr />
 
-            <!-- Downloads Section -->
-            <section id="downloads-section">
-                <h2>Downloads</h2>
-                <ul id="downloads-list" class="item-list"></ul>
-            </section>
+                <section id="downloads-section" class="card">
+                    <h2>Downloads</h2>
+                    <ul id="downloads-list" class="item-list"></ul>
+                </section>
+            </div>
         </main>
     </div>
 
     <script>
         let authHeader = localStorage.getItem("rpub_auth");
 
-        // Populate Timezones
+
         const timezoneSelect = document.getElementById('timezone-select');
         const timezones = Intl.supportedValuesOf('timeZone');
         timezones.forEach(tz => {
@@ -139,7 +141,7 @@
             timezoneSelect.appendChild(opt);
         });
 
-        // API Helpers
+
         async function api(url, method = "GET", body = null) {
             const headers = { "Content-Type": "application/json" };
             if (authHeader) {
@@ -164,14 +166,19 @@
             document
                 .getElementById("login-overlay")
                 .classList.remove("hidden");
-            document.querySelector(".container").classList.add("hidden");
+
+            const container = document.querySelector(".container");
+            container.classList.remove("hidden");
+            container.classList.add("blur-content");
         }
 
         function hideLogin() {
             document
                 .getElementById("login-overlay")
                 .classList.add("hidden");
-            document.querySelector(".container").classList.remove("hidden");
+            const container = document.querySelector(".container");
+            container.classList.remove("blur-content");
+            container.classList.remove("hidden");
         }
 
         async function handleLogin(e) {
@@ -181,7 +188,7 @@
             const creds = "Basic " + btoa(u + ":" + p);
 
             try {
-                // Verify credentials
+
                 const res = await fetch("/auth/check", {
                     headers: { Authorization: creds },
                 });
@@ -190,7 +197,7 @@
                     authHeader = creds;
                     localStorage.setItem("rpub_auth", creds);
                     hideLogin();
-                    // Reload data
+
                     loadFeeds();
                     loadSchedules();
                     loadDownloads();
@@ -204,7 +211,7 @@
             }
         }
 
-        // Feeds
+
         async function loadFeeds() {
             try {
                 const feeds = await api("/feeds");
@@ -213,7 +220,10 @@
                     .map(
                         (f) => `
                     <li>
-                        <span>${f.name || f.url} <small>(${f.concurrency_limit === 0 ? "Unlimited" : f.concurrency_limit + " threads"})</small></span>
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="rss-icon" style="color: var(--accent-blue); flex-shrink: 0;"><path d="M4 11a9 9 0 0 1 9 9"></path><path d="M4 4a16 16 0 0 1 16 16"></path><circle cx="5" cy="19" r="1"></circle></svg>
+                            <span>${f.name || f.url} <small>(${f.concurrency_limit === 0 ? "Unlimited" : f.concurrency_limit + " threads"})</small></span>
+                        </div>
                         <button onclick="deleteFeed(${f.id})" class="delete-btn">×</button>
                     </li>
                 `,
@@ -246,7 +256,7 @@
             }
         }
 
-        // Schedules
+
         async function loadSchedules() {
             try {
                 const schedules = await api("/schedules");
@@ -255,16 +265,16 @@
                 function formatCron(cron) {
                     try {
                         const parts = cron.split(' ');
-                        // Check for standard format: 0 min hour * * *
+
                         if (parts.length >= 5 && parts[0] === '0' && parts[3] === '*' && parts[4] === '*' && parts[5] === '*') {
                             const minute = parseInt(parts[1], 10);
                             const hour = parseInt(parts[2], 10);
 
-                            // Create Date in UTC
+
                             const date = new Date();
                             date.setUTCHours(hour, minute, 0, 0);
 
-                            // Format to local time
+
                             return new Intl.DateTimeFormat('default', {
                                 hour: 'numeric',
                                 minute: 'numeric',
@@ -305,37 +315,25 @@
                 return;
             }
 
-            // Convert to GMT
-            // Create a date object for "today" at the selected time in the selected timezone
-            // We use a trick: parse a string with the timezone offset, or use Intl to shift it.
-            // Simpler: Use a temporary Date object, set it to the target time in the target TZ? 
-            // JS Date is always local or UTC. 
-            // Strategy: Get the UTC timestamp for the chosen time in the chosen zone.
 
-            // 1. Get current date components
+
+
             const now = new Date();
 
-            // 2. Format a string for the target time in the target zone, e.g. "2023-10-27T10:00:00"
-            // But passing this to Date() constructor uses local time.
 
-            // We can use toLocaleString logic to find the offset, but it's tricky.
-            // Alternative: 
-            // Construct a date that we *think* is the time, then check what time it is in that zone, and adjust.
 
-            // Let's use a robust approach:
-            // We want to find a UTC time T such that T in 'timezone' is 'hour:minute'.
-            // Start with T = now (with hours/mins set to hour/minute in UTC).
-            // Check what time T is in 'timezone'. 
-            // Calculate difference and apply.
+
+
+
 
             const targetHour = hour;
             const targetMinute = minute;
 
-            // Start a guess at the current UTC date, with the target time imposed as if it were UTC
+
             let guess = new Date();
             guess.setUTCHours(targetHour, targetMinute, 0, 0);
 
-            // Function to get the hour/minute of a Date in the target timezone
+
             function getTimeInZone(date, zone) {
                 const parts = new Intl.DateTimeFormat('en-US', {
                     timeZone: zone,
@@ -346,17 +344,17 @@
 
                 const h = parseInt(parts.find(p => p.type === 'hour').value, 10);
                 const m = parseInt(parts.find(p => p.type === 'minute').value, 10);
-                // Handle 24:00 wrap if any
+
                 return { h: h === 24 ? 0 : h, m };
             }
 
-            // Iterate to converge (usually takes 1 or 2 steps)
+
             for (let i = 0; i < 3; i++) {
                 const currentInZone = getTimeInZone(guess, timezone);
 
                 let diffMinutes = (targetHour - currentInZone.h) * 60 + (targetMinute - currentInZone.m);
 
-                // Handle day wrap cases roughly (e.g. target 00:00 vs current 23:00 is +1 hr, not -23)
+
                 if (diffMinutes > 720) diffMinutes -= 1440;
                 if (diffMinutes < -720) diffMinutes += 1440;
 
@@ -365,20 +363,17 @@
                 guess.setTime(guess.getTime() + diffMinutes * 60 * 1000);
             }
 
-            // Now 'guess' is the UTC time that corresponds to the user's selected time in the selected timezone.
+
             const utcHour = guess.getUTCHours();
             const utcMinute = guess.getUTCMinutes();
 
-            const cronExpression = `0 ${utcMinute} ${utcHour} * * *`; // Seconds Minutes Hours ...
+            const cronExpression = `0 ${utcMinute} ${utcHour} * * *`;
 
             await api("/schedules", "POST", {
                 cron_expression: cronExpression,
             });
 
-            // We don't reset form fully because timezone/time selection might be sticky desired behavior, 
-            // but standard simple form reset is fine.
-            // e.target.reset(); // Resetting clears the timezone selection too which is annoying.
-            // Let's just keep it or maybe just reset standard way. User can change it back.
+
 
             loadSchedules();
         }
@@ -390,7 +385,7 @@
             }
         }
 
-        // Downloads
+
         async function loadDownloads() {
             try {
                 const files = await api("/downloads");
@@ -409,7 +404,7 @@
             }
         }
 
-        // Generate
+
         async function generate() {
             const btn = document.getElementById("generate-btn");
             const status = document.getElementById("status");
@@ -425,19 +420,19 @@
                             ? { Authorization: authHeader }
                             : {}),
                     },
-                    body: JSON.stringify({ feeds: [] }), // Empty list triggers DB fetch
+                    body: JSON.stringify({ feeds: [] }),
                 });
 
                 if (res.ok) {
                     status.textContent =
                         "Generation started in background. Please wait...";
-                    // Poll for new downloads every 2 seconds for a while
+
                     let checks = 0;
                     const interval = setInterval(async () => {
                         checks++;
                         await loadDownloads();
                         if (checks > 10) {
-                            // Stop auto-refreshing after 20 seconds
+
                             clearInterval(interval);
                             status.textContent =
                                 "Generation started. Check downloads list below.";
@@ -470,10 +465,10 @@
             status.textContent = "Uploading...";
 
             try {
-                // Manually construct fetch to handle FormData with Auth
+
                 const headers = {};
                 if (authHeader) headers["Authorization"] = authHeader;
-                // do NOT set Content-Type header when sending FormData, let browser set it with boundary
+
 
                 const res = await fetch("/cover", {
                     method: "POST",
@@ -483,30 +478,30 @@
 
                 if (res.ok) {
                     status.textContent = "Cover updated successfully!";
-                    status.style.color = "green";
-                    // Refresh image with timestamp
+                    status.style.color = "var(--accent-green)";
+
                     document.getElementById("cover-preview").src =
                         "/cover.jpg?t=" + new Date().getTime();
                     form.reset();
                 } else if (res.status === 401) {
                     showLogin();
                     status.textContent = "Authentication required.";
-                    status.style.color = "red";
+                    status.style.color = "var(--danger)";
                 } else {
                     status.textContent = "Error: " + (await res.text());
-                    status.style.color = "red";
+                    status.style.color = "var(--danger)";
                 }
             } catch (err) {
                 status.textContent = "Error: " + err.message;
-                status.style.color = "red";
+                status.style.color = "var(--danger)";
             }
         }
 
-        // Check Auth on Init
+
         async function checkAuth() {
             try {
                 await api("/auth/check");
-                // If success, load data and show container
+
                 document
                     .querySelector(".container")
                     .classList.remove("hidden");
@@ -514,11 +509,11 @@
                 loadSchedules();
                 loadDownloads();
             } catch (e) {
-                // api() handles 401 by showing login
+
             }
         }
 
-        // Init
+
         document
             .getElementById("login-form")
             .addEventListener("submit", handleLogin);

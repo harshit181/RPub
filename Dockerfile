@@ -27,7 +27,7 @@ COPY --from=builder /usr/src/rpub/target/release/rpub /usr/local/bin/rpub
 COPY static /app/static
 
 # Copy database
-#COPY rpub.db /app/rpub.db
+COPY rpub.db /app/rpub.db
 
 # Expose port
 EXPOSE 3000
