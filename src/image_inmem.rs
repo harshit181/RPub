@@ -1,13 +1,13 @@
+use crate::epub_message::{CompletionMessage, EpubPart};
 use anyhow::Result;
 use image::ImageFormat;
 use regex::Regex;
 use reqwest::Client;
+use std::any::Any;
 use std::io::Cursor;
 use std::sync::LazyLock;
 use tokio::sync::mpsc::Sender;
-
-use crate::epub_message::{CompletionMessage, EpubPart};
-use tracing::info;
+use tracing::{error, info};
 use uuid::Uuid;
 
 pub async fn process_images(
@@ -17,9 +17,8 @@ pub async fn process_images(
 ) -> (String, usize) {
     let mut processed_html = html.to_string();
 
-    static IMG_REGEX: LazyLock<Regex> = LazyLock::new(||
-       Regex::new(r#"<img[^>]+src="([^"]+)"[^>]*>"#).unwrap()
-    );
+    static IMG_REGEX: LazyLock<Regex> =
+        LazyLock::new(|| Regex::new(r#"<img[^>]+src="([^"]+)"[^>]*>"#).unwrap());
 
     let client = Client::builder()
         .user_agent("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
@@ -49,7 +48,7 @@ pub async fn process_images(
         tokio::spawn(async move {
             info!("Processing image: {}", src_clone);
             match download_image(&client, &src_clone).await {
-                Ok((img_data, format)) => match resize_and_grayscale(img_data, format) {
+                Ok((img_data, format)) => match resize_and_grayscale(img_data, format).await {
                     Ok(processed_data) => {
                         let mime_type = "image/jpeg".to_string();
                         let cursor = Cursor::new(processed_data);
@@ -72,7 +71,11 @@ pub async fn process_images(
                         drop(tx_m);
                         Ok("Completed")
                     }
-                    Err(_e) => {
+                    Err(e) => {
+                        error!(
+                            "error while processing image {} with error {}",
+                            src_clone, e
+                        );
                         if let Err(_) = tx_m
                             .send(CompletionMessage {
                                 sequence_id: sq,
@@ -118,18 +121,35 @@ async fn download_image(client: &Client, url: &str) -> Result<(Vec<u8>, ImageFor
     Ok((bytes, format))
 }
 
-fn resize_and_grayscale(data: Vec<u8>, format: ImageFormat) -> Result<Vec<u8>> {
-    let img = image::load_from_memory_with_format(&data, format)?;
+async fn resize_and_grayscale(data: Vec<u8>, format: ImageFormat) -> Result<Vec<u8>> {
+    let handle = tokio::spawn(async move {
+        let img = image::load_from_memory_with_format(&data, format)?;
+        let resized = img.resize(600, 800, image::imageops::FilterType::Nearest);
+        drop(img);
+        let grayscale = resized.grayscale();
+        drop(resized);
+        // Encode to JPEG
+        let mut buffer = Vec::new();
+        let mut cursor = Cursor::new(&mut buffer);
+        grayscale.write_to(&mut cursor, ImageFormat::Jpeg)?;
+        Ok(buffer)
+    });
 
-    // Resize
-    let resized = img.resize(600, 800, image::imageops::FilterType::Nearest);
-    drop(img);
-    let grayscale = resized.grayscale();
-    drop(resized);
-    // Encode to JPEG
-    let mut buffer = Vec::new();
-    let mut cursor = Cursor::new(&mut buffer);
-    grayscale.write_to(&mut cursor, ImageFormat::Jpeg)?;
-
-    Ok(buffer)
+    match handle.await {
+        Ok(result) => result,
+        Err(e) if e.is_panic() => {
+            let msg = extract_panic_msg(e.into_panic());
+            Err(anyhow::anyhow!("Tokio Task Panic: {}", msg))
+        }
+        Err(_) => Err(anyhow::anyhow!("Tokio Task Cancelled")),
+    }
+}
+fn extract_panic_msg(payload: Box<dyn Any + Send>) -> String {
+    if let Some(s) = payload.downcast_ref::<&str>() {
+        return s.to_string();
+    }
+    if let Some(s) = payload.downcast_ref::<String>() {
+        return s.clone();
+    }
+    "Unknown panic".to_string()
 }
