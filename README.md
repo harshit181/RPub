@@ -5,6 +5,8 @@
 
 It also serves an OPDS feed, making it easy to download the generated EPUBs directly to compatible readers (like KOReader, Moon+ Reader, etc.).
 
+![rpub screenshot](screenshot.png)
+
 ## Features
 
 - **RSS/Atom Parsing:** Automatically fetches and parses content from your configured feeds.
