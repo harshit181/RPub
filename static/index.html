@@ -26,19 +26,30 @@
                 <h1>RPub</h1>
                 <p>RSS Aggregator & EPUB Generator</p>
             </div>
-            <div class="header-icon">
-                <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none"
-                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"></path>
+            <div class="status-indicator">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                    style="color: var(--accent-blue); margin-right: 6px;">
+                    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+                    <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
                 </svg>
+                <span id="connection-status">RPub</span>
             </div>
         </header>
 
         <main class="dashboard-grid">
-            <div class="column">
-
+            <!-- Left Column -->
+            <div class="column left-col">
                 <section id="feeds-section" class="card">
-                    <h2>Feeds</h2>
+                    <div class="card-header">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M4 11a9 9 0 0 1 9 9"></path>
+                            <path d="M4 4a16 16 0 0 1 16 16"></path>
+                            <circle cx="5" cy="19" r="1"></circle>
+                        </svg>
+                        <h2>Feeds</h2>
+                    </div>
                     <ul id="feeds-list" class="item-list"></ul>
                     <form id="add-feed-form">
                         <div class="input-group">
@@ -46,81 +57,112 @@
                             <input type="text" name="name" placeholder="Name (Optional)" />
                         </div>
                         <div class="input-group">
-                            <input type="number" name="concurrency_limit" placeholder="Limit (0=Unl)" min="0" />
+                            <input type="number" name="concurrency_limit" placeholder="Limit (0=Uni)" min="0" />
                             <button type="submit" class="add-btn">Add Feed</button>
                         </div>
                     </form>
                 </section>
+
+                <!-- Schedules Section Moved to Right Column -->
             </div>
 
-            <div class="column">
-
+            <!-- Right Column -->
+            <div class="column right-col">
                 <section id="generate-section" class="card">
-                    <h2>Manual Generation</h2>
-                    <button id="generate-btn">Generate EPUB Now</button>
-                    <div id="status"></div>
-                </section>
-
-
-                <section id="schedules-section" class="card">
-                    <h2>Schedules</h2>
-                    <ul id="schedules-list" class="item-list"></ul>
-                    <form id="add-schedule-form">
-                        <div class="time-row">
-                            <select name="hour" required>
-                                <option value="" disabled selected>Hour</option>
-                                <script>
-                                    for (let i = 0; i < 24; i++) {
-                                        const val = i.toString().padStart(2, '0');
-                                        document.write(`<option value="${val}">${val}</option>`);
-                                    }
-                                </script>
-                            </select>
-                            <span>:</span>
-                            <select name="minute" required>
-                                <option value="" disabled selected>Min</option>
-                                <script>
-                                    for (let i = 0; i < 60; i += 5) {
-                                        const val = i.toString().padStart(2, '0');
-                                        document.write(`<option value="${val}">${val}</option>`);
-                                    }
-                                </script>
-                            </select>
-                            <select name="timezone" id="timezone-select" required>
-                                <option value="" disabled selected>Timezone</option>
-                            </select>
-                        </div>
-                        <button type="submit" class="add-btn">Add Schedule</button>
-                    </form>
-                    <p class="hint">
-                        Selected time will be converted to GMT for the scheduler.
-                    </p>
-                </section>
-
-
-                <section id="cover-section" class="card">
-                    <h2>Cover Image</h2>
-                    <div class="cover-wrapper">
-                        <div class="current-cover">
-
-                            <img id="cover-preview" src="/cover.jpg" alt="Book Cover" />
-                        </div>
-                        <div class="upload-cover">
-                            <h3>Replace Cover</h3>
-                            <form id="upload-cover-form">
-                                <input type="file" id="cover-file" name="cover" accept="image/jpeg" required />
-                                <button type="submit" class="add-btn">Upload New Cover</button>
-                            </form>
-                            <div id="upload-status"></div>
-                        </div>
+                    <div class="card-header">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+                        </svg>
+                        <h2>Manual Generation</h2>
+                    </div>
+                    <div class="generate-wrapper">
+                        <button id="generate-btn">Generate EPUB Now</button>
+                        <div id="status"></div>
                     </div>
                 </section>
 
+                <div class="sub-grid">
+                    <section id="cover-section" class="card">
+                        <div class="card-header">
+                            <h2>Cover Image</h2>
+                        </div>
+                        <div class="cover-wrapper">
+                            <div class="current-cover">
+                                <div class="cover-overlay">
+                                    <span>DAILY RSS DIGEST<br>(Cover Preview)</span>
+                                </div>
+                                <img id="cover-preview" src="/cover.jpg" alt="Book Cover" />
+                            </div>
+                            <div class="upload-cover">
+                                <label for="cover-file" class="upload-label">Replace Cover</label>
+                                <form id="upload-cover-form">
+                                    <div class="file-input-wrapper">
+                                        <input type="file" id="cover-file" name="cover" accept="image/jpeg" required />
+                                    </div>
+                                    <button type="submit" class="add-btn">Upload</button>
+                                </form>
+                                <div id="upload-status"></div>
+                            </div>
+                        </div>
+                    </section>
 
-                <section id="downloads-section" class="card">
-                    <h2>Downloads</h2>
-                    <ul id="downloads-list" class="item-list"></ul>
-                </section>
+                    <div class="column">
+                        <section id="schedules-section" class="card">
+                            <div class="card-header">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+                                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                    stroke-linejoin="round">
+                                    <circle cx="12" cy="12" r="10"></circle>
+                                    <polyline points="12 6 12 12 16 14"></polyline>
+                                </svg>
+                                <h2>Schedules</h2>
+                            </div>
+                            <ul id="schedules-list" class="item-list"></ul>
+                            <form id="add-schedule-form">
+                                <div class="time-row">
+                                    <select name="hour" required>
+                                        <option value="" disabled selected>00</option>
+                                        <script>
+                                            for (let i = 0; i < 24; i++) {
+                                                const val = i.toString().padStart(2, '0');
+                                                document.write(`<option value="${val}">${val}</option>`);
+                                            }
+                                        </script>
+                                    </select>
+                                    <span>:</span>
+                                    <select name="minute" required>
+                                        <option value="" disabled selected>00</option>
+                                        <script>
+                                            for (let i = 0; i < 60; i += 5) {
+                                                const val = i.toString().padStart(2, '0');
+                                                document.write(`<option value="${val}">${val}</option>`);
+                                            }
+                                        </script>
+                                    </select>
+                                    <select name="timezone" id="timezone-select" required>
+                                        <option value="" disabled selected>GMT+5:30</option>
+                                    </select>
+                                    <button type="submit" class="add-btn">Add Schedule</button>
+                                </div>
+                            </form>
+                        </section>
+
+                        <section id="downloads-section" class="card">
+                            <div class="card-header">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+                                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                    stroke-linejoin="round">
+                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                    <polyline points="7 10 12 15 17 10"></polyline>
+                                    <line x1="12" y1="15" x2="12" y2="3"></line>
+                                </svg>
+                                <h2>Downloads</h2>
+                            </div>
+                            <ul id="downloads-list" class="item-list"></ul>
+                        </section>
+                    </div>
+                </div>
             </div>
         </main>
     </div>
@@ -520,9 +562,6 @@
         document
             .getElementById("add-feed-form")
             .addEventListener("submit", addFeed);
-        document
-            .getElementById("add-schedule-form")
-            .addEventListener("submit", addSchedule);
         document
             .getElementById("add-schedule-form")
             .addEventListener("submit", addSchedule);
