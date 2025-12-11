@@ -304,39 +304,23 @@
                 const schedules = await api("/schedules");
                 const list = document.getElementById("schedules-list");
 
-                function formatCron(cron) {
-                    try {
-                        const parts = cron.split(' ');
-
-                        if (parts.length >= 5 && parts[0] === '0' && parts[3] === '*' && parts[4] === '*' && parts[5] === '*') {
-                            const minute = parseInt(parts[1], 10);
-                            const hour = parseInt(parts[2], 10);
-
-
-                            const date = new Date();
-                            date.setUTCHours(hour, minute, 0, 0);
-
-
-                            return new Intl.DateTimeFormat('default', {
+                list.innerHTML = schedules
+                    .map(
+                        (s) => {
+                            const date = new Date(s.time);
+                            const timeStr = new Intl.DateTimeFormat('default', {
                                 hour: 'numeric',
                                 minute: 'numeric',
                                 timeZoneName: 'short'
                             }).format(date);
-                        }
-                    } catch (e) {
-                        console.error("Error parsing cron", e);
-                    }
-                    return cron;
-                }
 
-                list.innerHTML = schedules
-                    .map(
-                        (s) => `
+                            return `
                     <li>
-                        <span>${formatCron(s.cron_expression)}</span>
+                        <span>${timeStr}</span>
                         <button onclick="deleteSchedule(${s.id})" class="delete-btn">×</button>
                     </li>
-                `,
+                `;
+                        }
                     )
                     .join("");
             } catch (e) {
@@ -357,65 +341,11 @@
                 return;
             }
 
-
-
-
-            const now = new Date();
-
-
-
-
-
-
-
-            const targetHour = hour;
-            const targetMinute = minute;
-
-
-            let guess = new Date();
-            guess.setUTCHours(targetHour, targetMinute, 0, 0);
-
-
-            function getTimeInZone(date, zone) {
-                const parts = new Intl.DateTimeFormat('en-US', {
-                    timeZone: zone,
-                    hour: 'numeric',
-                    minute: 'numeric',
-                    hour12: false
-                }).formatToParts(date);
-
-                const h = parseInt(parts.find(p => p.type === 'hour').value, 10);
-                const m = parseInt(parts.find(p => p.type === 'minute').value, 10);
-
-                return { h: h === 24 ? 0 : h, m };
-            }
-
-
-            for (let i = 0; i < 3; i++) {
-                const currentInZone = getTimeInZone(guess, timezone);
-
-                let diffMinutes = (targetHour - currentInZone.h) * 60 + (targetMinute - currentInZone.m);
-
-
-                if (diffMinutes > 720) diffMinutes -= 1440;
-                if (diffMinutes < -720) diffMinutes += 1440;
-
-                if (diffMinutes === 0) break;
-
-                guess.setTime(guess.getTime() + diffMinutes * 60 * 1000);
-            }
-
-
-            const utcHour = guess.getUTCHours();
-            const utcMinute = guess.getUTCMinutes();
-
-            const cronExpression = `0 ${utcMinute} ${utcHour} * * *`;
-
             await api("/schedules", "POST", {
-                cron_expression: cronExpression,
+                hour,
+                minute,
+                timezone,
             });
-
-
 
             loadSchedules();
         }

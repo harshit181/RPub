@@ -324,6 +324,7 @@ checksum = "a6139a8597ed92cf816dfb33f5dd6cf0bb93a6adc938f11039f371bc5bcd26c3"
 dependencies = [
  "chrono",
  "phf 0.12.1",
+ "serde",
 ]
 
 [[package]]
@@ -2409,6 +2410,7 @@ dependencies = [
  "axum",
  "base64",
  "chrono",
+ "chrono-tz",
  "dom_smoothie",
  "epub-builder",
  "feed-rs",

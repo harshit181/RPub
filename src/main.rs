@@ -22,11 +22,13 @@ use axum::{
     routing::{delete, get, post},
     Router,
 };
+use chrono::{Local, Timelike};
+use chrono_tz::Tz;
 use serde::Deserialize;
 use std::net::SocketAddr;
 use std::sync::{Arc, Mutex};
-use tokio::sync::Mutex as TokioMutex;
 use tokio::io::AsyncWriteExt;
+use tokio::sync::Mutex as TokioMutex;
 
 use base64::Engine;
 use tower_http::services::ServeDir;
@@ -35,7 +37,6 @@ use tracing::{info, warn};
 #[cfg(feature = "alternative-alloc")]
 #[global_allocator]
 static GLOBAL: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;
-
 
 struct AppState {
     db: Arc<Mutex<rusqlite::Connection>>,
@@ -216,11 +217,16 @@ async fn delete_feed(
     db::delete_feed(&db, id).map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
     Ok(StatusCode::NO_CONTENT)
 }
+#[derive(serde::Serialize)]
+struct ScheduleResponse {
+    id: i64,
+    time: String,
+    active: bool,
+}
 
-// Schedule Handlers
 async fn list_schedules(
     State(state): State<Arc<AppState>>,
-) -> Result<Json<Vec<db::Schedule>>, (StatusCode, String)> {
+) -> Result<Json<Vec<ScheduleResponse>>, (StatusCode, String)> {
     let db = state.db.lock().map_err(|_| {
         (
             StatusCode::INTERNAL_SERVER_ERROR,
@@ -229,18 +235,71 @@ async fn list_schedules(
     })?;
     let schedules =
         db::get_schedules(&db).map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
-    Ok(Json(schedules))
+
+    let mut response = Vec::new();
+    for s in schedules {
+        let parts: Vec<&str> = s.cron_expression.split_whitespace().collect();
+        if parts.len() >= 5 {
+            if let (Ok(minute), Ok(hour)) = (parts[1].parse::<u32>(), parts[2].parse::<u32>()) {
+                let now = Local::now();
+                if let Some(date) = now.date_naive().and_hms_opt(hour, minute, 0) {
+                    if let Some(local_dt) = date.and_local_timezone(Local).single() {
+                        response.push(ScheduleResponse {
+                            id: s.id.unwrap_or_default(),
+                            time: local_dt.to_rfc3339(),
+                            active: s.active,
+                        });
+                        continue;
+                    }
+                }
+            }
+        }
+
+        warn!(
+            "Skipping invalid/unparseable schedule cron: {}",
+            s.cron_expression
+        );
+    }
+
+    Ok(Json(response))
 }
 
 #[derive(Deserialize)]
 struct AddScheduleRequest {
-    cron_expression: String,
+    hour: u32,
+    minute: u32,
+    timezone: String,
 }
 
 async fn add_schedule(
     State(state): State<Arc<AppState>>,
     Json(payload): Json<AddScheduleRequest>,
 ) -> Result<StatusCode, (StatusCode, String)> {
+    let tz: Tz = payload
+        .timezone
+        .parse()
+        .map_err(|e| (StatusCode::BAD_REQUEST, format!("Invalid timezone: {}", e)))?;
+
+    let now_in_tz = chrono::Utc::now().with_timezone(&tz);
+
+    let target_time_in_tz = now_in_tz
+        .date_naive()
+        .and_hms_opt(payload.hour, payload.minute, 0)
+        .ok_or((StatusCode::BAD_REQUEST, "Invalid time".to_string()))?
+        .and_local_timezone(tz)
+        .unwrap();
+    let target_in_server = target_time_in_tz.with_timezone(&Local);
+
+    let server_hour = target_in_server.hour();
+    let server_minute = target_in_server.minute();
+
+    let cron_expression = format!("0 {} {} * * *", server_minute, server_hour);
+
+    info!(
+        "Converting {} {:02}:{:02} -> Server {:02}:{:02} (Cron: {})",
+        payload.timezone, payload.hour, payload.minute, server_hour, server_minute, cron_expression
+    );
+
     {
         let db = state.db.lock().map_err(|_| {
             (
@@ -248,7 +307,7 @@ async fn add_schedule(
                 "DB lock failed".to_string(),
             )
         })?;
-        db::add_schedule(&db, &payload.cron_expression)
+        db::add_schedule(&db, &cron_expression)
             .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
     }
 
@@ -388,7 +447,7 @@ async fn upload_cover(mut multipart: Multipart) -> Result<StatusCode, (StatusCod
                     format!("Failed to write file: {}", e),
                 )
             })?;
-            
+
             info!("Cover image updated successfully");
             return Ok(StatusCode::OK);
         }
