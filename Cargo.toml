@@ -5,7 +5,7 @@ edition = "2021"
 
 [dependencies]
 feed-rs = "2.3.1"
-reqwest = { version = "0.12.24", features = ["json", "blocking", "cookies"] } # Added blocking for simplicity if needed, but will use async
+reqwest = { version = "0.12.25", features = ["json", "blocking", "cookies"] } # Added blocking for simplicity if needed, but will use async
 tokio = { version = "1.48", features = ["full"] }
 epub-builder = "0.8.2"
 chrono = { version = "0.4.42", features = ["serde"] }
