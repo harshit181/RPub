@@ -59,9 +59,7 @@ async fn main() {
     #[cfg(feature = "alternative-alloc")]
     tikv_jemalloc_ctl::background_thread::write(true).expect("failed to enable background threads");
 
-    let filter = tracing_subscriber::EnvFilter::try_from_default_env()
-        .unwrap_or_else(|_| "info,html5ever=error".into());
-    tracing_subscriber::fmt().with_env_filter(filter).init();
+    tracing_subscriber::fmt().init();
 
     let conn = db::init_db("rpub.db").expect("Failed to initialize database");
     let db_mutex = Arc::new(Mutex::new(conn));

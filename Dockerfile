@@ -33,7 +33,7 @@ COPY static /app/static
 EXPOSE 3000
 
 # Set environment variables
-ENV RUST_LOG=info
+ENV RUST_LOG=info,html5ever=error
 
 # Run the application
 CMD ["rpub"]

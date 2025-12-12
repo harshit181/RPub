@@ -3,8 +3,6 @@ use anyhow::{Context, Result};
 use lettre::message::header::ContentType;
 use lettre::message::{Attachment, MultiPart, SinglePart};
 use lettre::transport::smtp::authentication::Credentials;
-use lettre::transport::smtp::response::Response;
-use lettre::transport::smtp::Error;
 use lettre::AsyncSmtpTransport;
 use lettre::Tokio1Executor;
 use lettre::{AsyncTransport, Message};

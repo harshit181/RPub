@@ -12,6 +12,7 @@ It also serves an OPDS feed, making it easy to download the generated EPUBs dire
 - [x] Add email send option for Kindle
 - [ ] Make it multi-platform via Tauri or Dioxus
 - [ ] Add configuration for few of the hardcoded settings
+- [ ] Cleanup unused/unnecessary features 
 
 ## Features
 
@@ -97,13 +98,18 @@ You can configure the application using environment variables:
 
 If these variables are set, the Web UI and API (except `/opds`) will require authentication.
 
-### Building with Optimization (Optional)
+<s>
+### Building with Optimization (Optional) 
 
 For better memory usage during image processing (recommended for low-memory devices), you can enable the `mem_opt` feature (requires `libvips` installed on your system):
 
-```bash
 cargo run --features mem_opt
-```
+</s>
+
+### Alternatives
+
+- **Calibre:** [Calibre](https://calibre-ebook.com/) also has a "Fetch News" feature that can download RSS feeds and convert them to EPUB/MOBI. It is a desktop application, whereas Rpub is designed to run as a server.
+- **KindleEar:** [KindleEar](https://github.com/cdhigh/KindleEar) is a Calibre port that runs on web to aggregate RSS feeds and send them to your Kindle.(https://github.com/harshit181/KindleEar minor code change to enable opds server)
 
 ## Architecture
 
