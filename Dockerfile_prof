@@ -1,7 +1,7 @@
 FROM rust:1.92.0-slim-trixie as builder
 
 WORKDIR /usr/src/rpub
-RUN apt-get update && apt-get install -y pkg-config libssl-dev build-essential && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y pkg-config build-essential && rm -rf /var/lib/apt/lists/*
 
 COPY . .
 
@@ -11,7 +11,7 @@ FROM debian:trixie-slim
 
 WORKDIR /app
 
-RUN apt-get update && apt-get install -y ca-certificates libssl3 sqlite3 heaptrack libjemalloc-dev binutils procps --no-install-recommends && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y ca-certificates sqlite3 heaptrack libjemalloc-dev binutils procps --no-install-recommends && rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /usr/src/rpub/target/debug/rsspub /usr/local/bin/rsspub
 
@@ -22,7 +22,7 @@ COPY rpub.db /app/rpub.db
 EXPOSE 3000
 
 ENV RUST_LOG=info
-ENV MALLOC_CONF=prof:true,lg_prof_interval:30,lg_prof_sample:21,prof_prefix:/tmp/jeprof
-ENV _RJEM_MALLOC_CONF=prof:true,lg_prof_interval:30,lg_prof_sample:21,prof_prefix:/tmp/jeprof
+ENV MALLOC_CONF=prof:true,lg_prof_interval:30,lg_prof_sample:19,prof_prefix:/tmp/jeprof,prof_leak:true
+ENV _RJEM_MALLOC_CONF=prof:true,lg_prof_interval:27,lg_prof_sample:19,prof_prefix:/tmp/jeprof,prof_leak:true
 
 CMD ["rpub"]
