@@ -5,7 +5,7 @@ edition = "2024"
 
 [dependencies]
 feed-rs = "2.3.1"
-reqwest = { version = "0.12.25", features = ["json", "blocking", "cookies"] } # Added blocking for simplicity if needed, but will use async
+reqwest = { version = "0.12.25", features = ["json", "blocking", "cookies","rustls-tls"],default-features = false }
 tokio = { version = "1.48", features = ["full"] }
 epub-builder = "0.8.2"
 chrono = { version = "0.4.42", features = ["serde"] }
@@ -20,7 +20,7 @@ tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
 dom_smoothie = "0.14.0"
 rusqlite = { version = "0.37", features = ["bundled"] }
 tokio-cron-scheduler = "0.15.1"
-lettre = { version = "0.11.19", features = ["tokio1", "tokio1-native-tls", "smtp-transport"] }
+lettre = { version = "0.11.19",default-features = false, features = ["tokio1", "tokio1-rustls-tls", "smtp-transport","builder"] }
 libvips = { version = "1.7.1", optional = true }
 regex = "1.10"
 ammonia = "4.1.2"
