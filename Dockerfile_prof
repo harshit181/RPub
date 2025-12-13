@@ -17,7 +17,7 @@ COPY --from=builder /usr/src/rpub/target/debug/rsspub /usr/local/bin/rsspub
 
 COPY static /app/static
 
-COPY rpub.db /app/rpub.db
+COPY rpub.db /app/db/rpub.db
 
 EXPOSE 3000
 
