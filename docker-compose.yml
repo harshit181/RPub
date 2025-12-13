@@ -1,13 +1,12 @@
-version: '3.8'
-
 services:
   rsspub:
-    build: .
     ports:
       - "3000:3000"
+    image: harshit181/rsspub:latest
     volumes:
-      - ./data:/app/data
-      - ./static/epubs:/app/static/epubs
+      - ${EPUBS_HOST_DIR:-./db}:/app/db
     environment:
-      - RUST_LOG=info
+      - RUST_LOG=info,html5ever=error
+      - RPUB_USERNAME=${RPUB_USERNAME}
+      - RPUB_PASSWORD=${RPUB_PASSWORD}
     restart: unless-stopped

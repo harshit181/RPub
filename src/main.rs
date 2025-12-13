@@ -17,11 +17,11 @@ use tokio_cron_scheduler::JobScheduler;
 
 use crate::db::Feed;
 use axum::{
+    Router,
     extract::{Json, Multipart, Path, State},
-    http::{header, HeaderMap, StatusCode},
+    http::{HeaderMap, StatusCode, header},
     response::IntoResponse,
     routing::{delete, get, post},
-    Router,
 };
 use chrono::{Local, Timelike};
 use chrono_tz::Tz;
@@ -62,7 +62,7 @@ async fn main() {
 
     tracing_subscriber::fmt().init();
 
-    let conn = db::init_db("rpub.db").expect("Failed to initialize database");
+    let conn = db::init_db("./db/rpub.db").expect("Failed to initialize database");
     let db_mutex = Arc::new(Mutex::new(conn));
     let sched = scheduler::init_scheduler(db_mutex.clone())
         .await
@@ -420,9 +420,8 @@ async fn generate_handler(
                 if send_email {
                     info!("Email sending requested. Fetching config...");
                     let config_result = {
-                        let db = db_clone.lock().unwrap(); // Use blocking lock for quick access or async if needed, but here we are in async block.
-                                                           // Wait, db_clone is Arc<Mutex<Connection>> (std::sync::Mutex).
-                                                           // So lock().unwrap() is correct.
+                        let db = db_clone.lock().unwrap();
+
                         db::get_email_config(&db)
                     };
 

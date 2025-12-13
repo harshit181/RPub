@@ -17,7 +17,7 @@ RUN apt-get update && apt-get install -y ca-certificates && rm -rf /var/lib/apt/
 COPY --from=builder /usr/src/rsspub/target/release/rsspub /usr/local/bin/rsspub
 
 COPY static /app/static
-
+RUN mkdir -p /app/db
 EXPOSE 3000
 
 ENV RUST_LOG=info,html5ever=error
