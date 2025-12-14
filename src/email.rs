@@ -1,4 +1,4 @@
-use crate::db::EmailConfig;
+use crate::models::EmailConfig;
 use anyhow::{Context, Result};
 use lettre::message::header::ContentType;
 use lettre::message::{Attachment, MultiPart, SinglePart};

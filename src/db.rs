@@ -1,6 +1,7 @@
 use chrono::Utc;
 use rusqlite::{params, Connection, Result};
-use serde::{Deserialize, Serialize};
+
+use crate::models::{EmailConfig, Feed, Schedule};
 
 pub fn init_db(path: &str) -> Result<Connection> {
     let conn = Connection::open(path)?;
@@ -61,32 +62,6 @@ pub fn init_db(path: &str) -> Result<Connection> {
     Ok(conn)
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct Feed {
-    pub id: Option<i64>,
-    pub url: String,
-    pub name: Option<String>,
-    #[serde(default)]
-    pub concurrency_limit: usize,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct Schedule {
-    pub id: Option<i64>,
-    pub cron_expression: String,
-    pub active: bool,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct EmailConfig {
-    pub smtp_host: String,
-    pub smtp_port: u16,
-    pub smtp_password: String,
-    pub email_address: String,
-    pub to_email: String,
-    #[serde(default)]
-    pub enable_auto_send: bool,
-}
 
 pub fn add_feed(
     conn: &Connection,
