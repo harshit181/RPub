@@ -8,14 +8,17 @@ mod image;
 #[cfg(not(feature = "mem_opt"))]
 #[path = "image_inmem.rs"]
 mod image;
+mod models;
 mod opds;
 mod processor;
 mod scheduler;
 mod util;
 
-use tokio_cron_scheduler::JobScheduler;
 
-use crate::db::Feed;
+
+
+use crate::models::{AddFeedRequest, AddScheduleRequest, AppState, EmailConfig, Feed, GenerateRequest, ScheduleResponse};
+
 use axum::{
     Router,
     extract::{Json, Multipart, Path, State},
@@ -25,7 +28,6 @@ use axum::{
 };
 use chrono::{Local, Timelike};
 use chrono_tz::Tz;
-use serde::Deserialize;
 use std::net::SocketAddr;
 use std::sync::{Arc, Mutex};
 use tokio::io::AsyncWriteExt;
@@ -40,18 +42,7 @@ use tracing::{info, warn};
 #[global_allocator]
 static GLOBAL: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;
 
-struct AppState {
-    db: Arc<Mutex<rusqlite::Connection>>,
-    scheduler: Arc<TokioMutex<JobScheduler>>,
-}
 
-#[derive(Deserialize)]
-struct GenerateRequest {
-    #[serde(default)]
-    feeds: Vec<Feed>,
-    #[serde(default)]
-    send_email: bool,
-}
 
 #[tokio::main]
 async fn main() {
@@ -177,7 +168,7 @@ async fn list_downloads() -> Result<Json<Vec<String>>, (StatusCode, String)> {
 // Feed Handlers
 async fn list_feeds(
     State(state): State<Arc<AppState>>,
-) -> Result<Json<Vec<db::Feed>>, (StatusCode, String)> {
+) -> Result<Json<Vec<Feed>>, (StatusCode, String)> {
     let db = state.db.lock().map_err(|_| {
         (
             StatusCode::INTERNAL_SERVER_ERROR,
@@ -189,13 +180,7 @@ async fn list_feeds(
     Ok(Json(feeds))
 }
 
-#[derive(Deserialize)]
-struct AddFeedRequest {
-    url: String,
-    name: Option<String>,
-    #[serde(default)]
-    concurrency_limit: usize,
-}
+
 
 async fn add_feed(
     State(state): State<Arc<AppState>>,
@@ -230,12 +215,7 @@ async fn delete_feed(
     db::delete_feed(&db, id).map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
     Ok(StatusCode::NO_CONTENT)
 }
-#[derive(serde::Serialize)]
-struct ScheduleResponse {
-    id: i64,
-    time: String,
-    active: bool,
-}
+
 
 async fn list_schedules(
     State(state): State<Arc<AppState>>,
@@ -277,12 +257,7 @@ async fn list_schedules(
     Ok(Json(response))
 }
 
-#[derive(Deserialize)]
-struct AddScheduleRequest {
-    hour: u32,
-    minute: u32,
-    timezone: String,
-}
+
 
 async fn add_schedule(
     State(state): State<Arc<AppState>>,
@@ -497,7 +472,7 @@ async fn upload_cover(mut multipart: Multipart) -> Result<StatusCode, (StatusCod
 
 async fn get_email_config_handler(
     State(state): State<Arc<AppState>>,
-) -> Result<Json<Option<db::EmailConfig>>, (StatusCode, String)> {
+) -> Result<Json<Option<EmailConfig>>, (StatusCode, String)> {
     let db = state.db.lock().map_err(|_| {
         (
             StatusCode::INTERNAL_SERVER_ERROR,
@@ -517,7 +492,7 @@ async fn get_email_config_handler(
 
 async fn update_email_config_handler(
     State(state): State<Arc<AppState>>,
-    Json(mut payload): Json<db::EmailConfig>,
+    Json(mut payload): Json<EmailConfig>,
 ) -> Result<StatusCode, (StatusCode, String)> {
     let db = state.db.lock().map_err(|_| {
         (
