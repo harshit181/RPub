@@ -1,4 +1,4 @@
-use crate::db::Feed;
+use crate::models::Feed;
 use crate::{epub_gen, feed};
 use anyhow::Result;
 use chrono::{Duration as ChronoDuration, Utc};
