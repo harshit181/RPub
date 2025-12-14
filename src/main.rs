@@ -73,7 +73,7 @@ async fn main() {
         scheduler: Arc::new(TokioMutex::new(sched)),
     });
 
-    tokio::fs::create_dir_all("static/epubs").await.unwrap();
+    tokio::fs::create_dir_all(util::EPUBS_OUTPUT_DIR).await.unwrap();
 
     let public_routes = Router::new().route("/opds", get(opds_handler));
 
@@ -133,7 +133,7 @@ async fn opds_handler(headers: HeaderMap) -> Result<impl IntoResponse, (StatusCo
 
     let base_url = format!("{}://{}", scheme, host);
 
-    let xml = opds::generate_opds_feed(&base_url, "static/epubs")
+    let xml = opds::generate_opds_feed(&base_url, util::EPUBS_OUTPUT_DIR)
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
@@ -150,7 +150,7 @@ async fn opds_handler(headers: HeaderMap) -> Result<impl IntoResponse, (StatusCo
 
 async fn list_downloads() -> Result<Json<Vec<String>>, (StatusCode, String)> {
     let mut files = Vec::new();
-    let mut entries = tokio::fs::read_dir("static/epubs").await.map_err(|e| {
+    let mut entries = tokio::fs::read_dir(util::EPUBS_OUTPUT_DIR).await.map_err(|e| {
         (
             StatusCode::INTERNAL_SERVER_ERROR,
             format!("Failed to read downloads: {}", e),
@@ -414,7 +414,7 @@ async fn generate_handler(
 
     tokio::spawn(async move {
         info!("Starting background EPUB generation...");
-        match processor::generate_and_save(feeds_to_fetch, &db_clone, "static/epubs").await {
+        match processor::generate_and_save(feeds_to_fetch, &db_clone, util::EPUBS_OUTPUT_DIR).await {
             Ok(filename) => {
                 info!("Background generation completed successfully: {}", filename);
                 if send_email {
@@ -427,7 +427,7 @@ async fn generate_handler(
 
                     match config_result {
                         Ok(Some(config)) => {
-                            let epub_path = std::path::Path::new("static/epubs").join(&filename);
+                            let epub_path = std::path::Path::new(util::EPUBS_OUTPUT_DIR).join(&filename);
                             info!("Sending email for {}...", filename);
                             if let Err(e) = email::send_epub(&config, &epub_path).await {
                                 tracing::error!("Failed to send email: {}", e);

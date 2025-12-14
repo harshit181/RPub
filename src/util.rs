@@ -1,6 +1,8 @@
 use regex::Regex;
 use ammonia::Builder;
 
+pub const EPUBS_OUTPUT_DIR: &str = "static/epubs";
+
 pub fn clean_html(html: &str) -> String {
     let mut builder = Builder::new();
     builder.add_tags(&[

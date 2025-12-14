@@ -68,7 +68,7 @@ async fn run_scheduled_generation(db: Arc<Mutex<Connection>>) -> Result<()> {
         return Ok(());
     }
 
-    let filename = processor::generate_and_save(feeds, &db, "static/epubs").await?;
+    let filename = processor::generate_and_save(feeds, &db, crate::util::EPUBS_OUTPUT_DIR).await?;
     info!("Scheduled generation completed: {}", filename);
 
     let send_email = {
@@ -88,7 +88,7 @@ async fn run_scheduled_generation(db: Arc<Mutex<Connection>>) -> Result<()> {
         };
 
         if let Some(config) = config_opt {
-             let epub_path = std::path::Path::new("static/epubs").join(&filename);
+             let epub_path = std::path::Path::new(crate::util::EPUBS_OUTPUT_DIR).join(&filename);
              if let Err(e) = crate::email::send_epub(&config, &epub_path).await {
                  error!("Failed to auto-send email: {}", e);
              } else {
@@ -101,7 +101,7 @@ async fn run_scheduled_generation(db: Arc<Mutex<Connection>>) -> Result<()> {
 }
 
 async fn cleanup_old_files() -> Result<()> {
-    let output_dir = "static/epubs";
+    let output_dir = crate::util::EPUBS_OUTPUT_DIR;
     if !Path::new(output_dir).exists() {
         return Ok(());
     }
