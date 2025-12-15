@@ -7,3 +7,6 @@
 /dockerfiles
 /memtest
 vncmain.sh
+/static/assets
+/static/index.html
+/static/vite.svg
