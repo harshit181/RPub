@@ -83,7 +83,7 @@ header p {
 /* Grid Layout */
 .dashboard-grid {
   display: grid;
-  grid-template-columns: 350px 1fr;
+  grid-template-columns: 2fr 1fr;
   gap: 1.5rem;
   align-items: start;
 }
@@ -237,6 +237,16 @@ button {
 
 .item-list li:hover {
   border-color: var(--accent-blue);
+}
+
+#feeds-list {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+#feeds-list li {
+  margin-bottom: 0;
 }
 
 /* Header & Status */

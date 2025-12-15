@@ -18,9 +18,9 @@
 
     onMount(async () => {
         window.addEventListener("unauthorized", () => {
-             isAuthenticated.set(false);
-             authHeader.set(null);
-             isLoginVisible.set(true);
+            isAuthenticated.set(false);
+            authHeader.set(null);
+            isLoginVisible.set(true);
         });
 
         try {
@@ -57,13 +57,13 @@
                 </div>
             </main>
         {:else if activeTab === "Configuration"}
-             <main class="dashboard-grid">
+            <main class="dashboard-grid">
                 <div class="column left-col">
-                     <CoverSection />
+                    <SchedulesSection />
+                    <EmailConfigSection />
                 </div>
                 <div class="column right-col">
-                    <EmailConfigSection />
-                    <SchedulesSection />
+                    <CoverSection />
                 </div>
             </main>
         {/if}
