@@ -51,16 +51,8 @@
         </main>
     </div>
 {:else}
-    <!--
-    If not authenticated, show blank or blur content?
-    Original code hid container and showed login overlay.
-    Here LoginOverlay handles its own visibility but also depends on auth logic.
-    If not authenticated, we simply don't render the dashboard.
-    LoginOverlay will appear if api calls return 401, OR we can force it.
-    Use onMount to check auth.
--->
+    <!-- -->
 {/if}
 
 <style>
-    /* App specific styles if any, otherwise global in app.css */
 </style>
