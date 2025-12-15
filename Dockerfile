@@ -8,6 +8,16 @@ COPY . .
 
 RUN cargo build --release --features alternative-alloc
 
+FROM denoland/deno:alpine as ui-builder
+
+WORKDIR /project
+
+COPY ui/package.json ui/deno.lock* ./
+RUN deno install
+
+COPY ui .
+RUN deno task build
+
 FROM debian:trixie-slim
 
 WORKDIR /app
@@ -16,7 +26,9 @@ RUN apt-get update && apt-get install -y ca-certificates && rm -rf /var/lib/apt/
 
 COPY --from=builder /usr/src/rsspub/target/release/rsspub /usr/local/bin/rsspub
 
-COPY static /app/static
+COPY --from=ui-builder /static /app/static
+COPY static/cover.jpg /app/static/cover.jpg
+RUN mkdir -p /app/static/epubs
 RUN mkdir -p /app/db
 EXPOSE 3000
 
