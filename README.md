@@ -12,7 +12,7 @@ It also serves an OPDS feed, making it easy to download the generated EPUBs dire
 ## Roadmap
 
 - [x] Add email send option for Kindle
-- [x] Add mini Read it later feature.
+- [x] Add basic Read it later feature.
 - [ ] Make it multi-platform via Tauri or Dioxus
 - [ ] Add configuration for few of the hardcoded settings
 - [ ] Cleanup unused/unnecessary features 
@@ -108,7 +108,7 @@ You can configure the application using environment variables:
 
 If these variables are set, the Web UI and API (except `/opds`) will require authentication.
 
-<s>
+
 ### Read It Later
 
 You can save individual articles to be included in your next daily EPUB delivery.
@@ -141,7 +141,7 @@ You can easily add articles from your Android phone using the [HTTP Shortcuts](h
     -   When browsing an article in Chrome or any app, tap **Share**.
     -   Select **HTTP Shortcuts**.
     -   Select your **Add to rsspub** shortcut.
-
+<s>
 ### Building with Optimization (Optional) 
 
 For better memory usage during image processing (recommended for low-memory devices), you can enable the `mem_opt` feature (requires `libvips` installed on your system):
