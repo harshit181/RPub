@@ -1,11 +1,13 @@
-use crate::models::Feed;
-use crate::{epub_gen, feed};
+use crate::models::{Feed, ReadItLaterArticle};
+use crate::{epub_gen, feed, util};
 use anyhow::Result;
-use chrono::{Duration as ChronoDuration, Utc};
+use chrono::{DateTime, Duration as ChronoDuration, Utc};
+use reqwest::Client;
 use rusqlite::Connection;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
-use tracing::info;
+use std::time::Duration;
+use tracing::{info, warn};
 
 pub async fn generate_epub(
     feeds: Vec<Feed>,
@@ -66,6 +68,72 @@ pub async fn generate_and_save(
     let filepath = format!("{}/{}", output_dir, filename);
 
     generate_epub(feeds, db, &filepath).await?;
-
     Ok(filename)
+}
+
+pub async fn generate_read_it_later_epub(
+    articles: Vec<ReadItLaterArticle>,
+    output_dir: &str,
+) -> Result<String> {
+    let filename = format!(
+        "read_it_later_{}.epub",
+        Utc::now().format("%Y%m%d_%H%M%S")
+    );
+    let filepath = format!("{}/{}", output_dir, filename);
+
+    info!("Fetching content for {} Read It Later articles...", articles.len());
+
+    let client = Client::builder()
+        .user_agent("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+        .timeout(Duration::from_secs(45))
+        .cookie_store(true)
+        .build()
+        .unwrap_or_else(|_| Client::new());
+
+    let mut fetched_articles = Vec::new();
+
+    for article in articles {
+        info!("Fetching: {}", article.url);
+        match util::fetch_full_content(&client, &article.url).await {
+            Ok(content) => {
+                fetched_articles.push(crate::feed::Article {
+                    title: article.title.unwrap_or_else(|| "Untitled".to_string()),
+                    link: article.url.clone(),
+                    content,
+                    pub_date: DateTime::parse_from_rfc3339(&article.created_at)
+                        .map(|dt| dt.with_timezone(&Utc))
+                        .unwrap_or_else(|_| Utc::now()),
+                    source: "Read It Later".to_string(),
+                });
+            }
+            Err(e) => {
+                warn!("Failed to fetch {}: {}", article.url, e);
+                fetched_articles.push(crate::feed::Article {
+                    title: format!("Error: {}", article.url),
+                    link: article.url.clone(),
+                    content: format!("<p>Failed to fetch content: {}</p>", e),
+                    pub_date: Utc::now(),
+                    source: "Read It Later Errors".to_string(),
+                });
+            }
+        }
+    }
+
+    if fetched_articles.is_empty() {
+        return Err(anyhow::anyhow!("No content could be fetched."));
+    }
+
+    let temp_path = get_temp_file_path(&filepath);
+    let file = std::fs::File::create(&temp_path)?;
+
+    match epub_gen::generate_epub_data(&fetched_articles, file).await {
+        Ok(_) => {
+            std::fs::rename(&temp_path, &filepath)?;
+            Ok(filename)
+        }
+        Err(e) => {
+            let _ = std::fs::remove_file(&temp_path);
+            Err(anyhow::anyhow!("Failed to generate EPUB: {}", e))
+        }
+    }
 }

@@ -1,7 +1,7 @@
 use chrono::Utc;
 use rusqlite::{params, Connection, Result};
 
-use crate::models::{EmailConfig, Feed, Schedule};
+use crate::models::{EmailConfig, Feed, ReadItLaterArticle, Schedule};
 
 pub fn init_db(path: &str) -> Result<Connection> {
     let conn = Connection::open(path)?;
@@ -36,6 +36,17 @@ pub fn init_db(path: &str) -> Result<Connection> {
             email_address TEXT NOT NULL,
             to_email TEXT NOT NULL,
             enable_auto_send BOOLEAN NOT NULL DEFAULT 0
+        )",
+        [],
+    )?;
+
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS read_it_later (
+            id INTEGER PRIMARY KEY,
+            url TEXT NOT NULL UNIQUE,
+            title TEXT,
+            read BOOLEAN NOT NULL DEFAULT 0,
+            created_at TEXT NOT NULL
         )",
         [],
     )?;
@@ -164,5 +175,54 @@ pub fn save_email_config(conn: &Connection, config: &EmailConfig) -> Result<()> 
             config.enable_auto_send
         ],
     )?;
+    Ok(())
+}
+
+pub fn add_read_it_later_article(conn: &Connection, url: &str, title: Option<&str>) -> Result<()> {
+    conn.execute(
+        "INSERT OR IGNORE INTO read_it_later (url, title, created_at) VALUES (?1, ?2, ?3)",
+        params![url, title, Utc::now().to_rfc3339()],
+    )?;
+    Ok(())
+}
+
+pub fn get_read_it_later_articles(
+    conn: &Connection,
+    unread_only: bool,
+) -> Result<Vec<ReadItLaterArticle>> {
+    let mut query = "SELECT id, url, title, read, created_at FROM read_it_later".to_string();
+    if unread_only {
+        query.push_str(" WHERE read = 0");
+    }
+    query.push_str(" ORDER BY created_at DESC");
+
+    let mut stmt = conn.prepare(&query)?;
+    let article_iter = stmt.query_map([], |row| {
+        Ok(ReadItLaterArticle {
+            id: Some(row.get(0)?),
+            url: row.get(1)?,
+            title: row.get(2)?,
+            read: row.get(3)?,
+            created_at: row.get(4)?,
+        })
+    })?;
+
+    let mut articles = Vec::new();
+    for article in article_iter {
+        articles.push(article?);
+    }
+    Ok(articles)
+}
+
+pub fn update_read_it_later_status(conn: &Connection, id: i64, read: bool) -> Result<()> {
+    conn.execute(
+        "UPDATE read_it_later SET read = ?1 WHERE id = ?2",
+        params![read, id],
+    )?;
+    Ok(())
+}
+
+pub fn delete_read_it_later_article(conn: &Connection, id: i64) -> Result<()> {
+    conn.execute("DELETE FROM read_it_later WHERE id = ?1", params![id])?;
     Ok(())
 }

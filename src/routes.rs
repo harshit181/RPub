@@ -3,7 +3,7 @@ use crate::models::AppState;
 use axum::{
     Router,
     http::{StatusCode, header},
-    routing::{delete, get, post},
+    routing::{delete, get, patch, post},
 };
 use std::sync::Arc;
 use tower::ServiceBuilder;
@@ -29,6 +29,15 @@ pub fn create_router(state: Arc<AppState>) -> Router {
             "/email-config",
             get(handlers::get_email_config_handler).post(handlers::update_email_config_handler),
         )
+        .route(
+            "/read-it-later",
+            get(handlers::list_read_it_later).post(handlers::add_read_it_later),
+        )
+        .route(
+            "/read-it-later/{id}",
+            delete(handlers::delete_read_it_later).patch(handlers::update_read_it_later_status),
+        )
+        .route("/read-it-later/deliver", post(handlers::deliver_read_it_later))
         .route("/auth/check", get(|| async { StatusCode::OK }));
 
     let protected_routes =

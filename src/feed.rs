@@ -9,6 +9,7 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::Semaphore;
 use tracing::{error, info, warn};
+use crate::util;
 
 #[derive(Debug, Clone)]
 pub struct Article {
@@ -150,7 +151,7 @@ pub async fn filter_items(
 
 
                         let content = if !link.is_empty() {
-                            match fetch_full_content(&client, &link).await {
+                            match util::fetch_full_content(&client, &link).await {
                                 Ok(c) => c,
                                 Err(e) => {
                                     error!("Error fetching full content for '{}': {}", link, e);
@@ -190,17 +191,4 @@ pub async fn filter_items(
     articles.sort_by(|a, b| b.pub_date.cmp(&a.pub_date));
 
     articles
-}
-
-async fn fetch_full_content(client: &Client, url: &str) -> Result<String> {
-    let html = client.get(url).send().await?.text().await?;
-    let cfg = Config {
-        text_mode: TextMode::Markdown,
-        ..Default::default()
-    };
-    let mut readability = dom_smoothie::Readability::new(html, Some(url), Some(cfg))?;
-    let extracted = readability
-        .parse()
-        .map_err(|e| anyhow::anyhow!("DomSmoothie error: {:?}", e))?;
-    Ok(extracted.content.to_string())
 }

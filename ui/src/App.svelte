@@ -8,13 +8,14 @@
     import SchedulesSection from "./components/SchedulesSection.svelte";
     import DownloadsSection from "./components/DownloadsSection.svelte";
     import EmailConfigSection from "./components/EmailConfigSection.svelte";
+    import ReadItLaterSection from "./components/ReadItLaterSection.svelte";
     import Tabs from "./components/Tabs.svelte";
     import { onMount } from "svelte";
     import { api } from "./lib/api";
     import { isAuthenticated, authHeader, isLoginVisible } from "./lib/store";
 
     let activeTab = "Dashboard";
-    const tabs = ["Dashboard", "Configuration"];
+    const tabs = ["Dashboard", "Configuration", "Read It Later"];
 
     onMount(async () => {
         window.addEventListener("unauthorized", () => {
@@ -64,6 +65,12 @@
                 </div>
                 <div class="column right-col">
                     <CoverSection />
+                </div>
+            </main>
+        {:else if activeTab === "Read It Later"}
+            <main class="dashboard-grid">
+                <div class="column left-col">
+                    <ReadItLaterSection />
                 </div>
             </main>
         {/if}

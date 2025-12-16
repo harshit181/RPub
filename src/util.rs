@@ -1,5 +1,7 @@
 use regex::Regex;
 use ammonia::Builder;
+use reqwest::Client;
+use dom_smoothie::{Config, TextMode};
 
 pub const EPUBS_OUTPUT_DIR: &str = "static/epubs";
 
@@ -98,4 +100,17 @@ pub fn escape_xml(s: &str) -> String {
         .replace(">", "&gt;")
         .replace("\"", "&quot;")
         .replace("'", "&apos;")
+}
+
+pub async fn fetch_full_content(client: &Client, url: &str) -> anyhow::Result<String> {
+    let html = client.get(url).send().await?.text().await?;
+    let cfg = Config {
+        text_mode: TextMode::Markdown,
+        ..Default::default()
+    };
+    let mut readability = dom_smoothie::Readability::new(html, Some(url), Some(cfg))?;
+    let extracted = readability
+        .parse()
+        .map_err(|e| anyhow::anyhow!("DomSmoothie error: {:?}", e))?;
+    Ok(extracted.content.to_string())
 }
