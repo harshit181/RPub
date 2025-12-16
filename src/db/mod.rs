@@ -41,21 +41,22 @@ pub fn delete_feed(conn: &Connection, id: i64) -> Result<()> {
     Ok(())
 }
 
-pub fn add_schedule(conn: &Connection, cron_expression: &str) -> Result<()> {
+pub fn add_schedule(conn: &Connection, cron_expression: &str, schedule_type: &str) -> Result<()> {
     conn.execute(
-        "INSERT INTO schedules (cron_expression, active, created_at) VALUES (?1, ?2, ?3)",
-        params![cron_expression, true, Utc::now().to_rfc3339()],
+        "INSERT INTO schedules (cron_expression, active, schedule_type, created_at) VALUES (?1, ?2, ?3, ?4)",
+        params![cron_expression, true, schedule_type, Utc::now().to_rfc3339()],
     )?;
     Ok(())
 }
 
 pub fn get_schedules(conn: &Connection) -> Result<Vec<Schedule>> {
-    let mut stmt = conn.prepare("SELECT id, cron_expression, active FROM schedules")?;
+    let mut stmt = conn.prepare("SELECT id, cron_expression, active, schedule_type FROM schedules")?;
     let schedule_iter = stmt.query_map([], |row| {
         Ok(Schedule {
             id: Some(row.get(0)?),
             cron_expression: row.get(1)?,
             active: row.get(2)?,
+            schedule_type: row.get(3)?,
         })
     })?;
 

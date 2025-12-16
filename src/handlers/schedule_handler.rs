@@ -32,6 +32,7 @@ pub async fn list_schedules(
                             id: s.id.unwrap_or_default(),
                             time: local_dt.to_rfc3339(),
                             active: s.active,
+                            schedule_type: s.schedule_type,
                         });
                         continue;
                     }
@@ -84,7 +85,7 @@ pub async fn add_schedule(
                 "DB lock failed".to_string(),
             )
         })?;
-        db::add_schedule(&db, &cron_expression)
+        db::add_schedule(&db, &cron_expression, &payload.schedule_type)
             .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
     }
 

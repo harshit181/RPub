@@ -506,3 +506,18 @@ input:checked+.slider:before {
 .tabs-container {
   margin-bottom: 2rem;
 }
+
+.schedule-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.schedule-type-badge {
+  font-size: 0.75rem;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-secondary);
+  width: fit-content;
+}

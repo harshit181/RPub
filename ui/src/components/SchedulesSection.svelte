@@ -4,7 +4,8 @@
     import { schedules, isAuthenticated, popup } from "../lib/store";
     let hour = "";
     let minute = "";
-    let timezone = "GMT+5:30";
+    let scheduleType = "rss";
+    let timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
     const hours = Array.from({ length: 24 }, (_, i) =>
         i.toString().padStart(2, "0"),
@@ -35,11 +36,11 @@
     }
 
     async function addSchedule() {
-        if (!hour || !minute || !timezone) {
+        if (!hour || !minute || !timezone || !scheduleType) {
             popup.set({
                 visible: true,
                 title: "Missing Information",
-                message: "Please select Hour, Minute, and Timezone.",
+                message: "Please select Hour, Minute, Timezone, and Type.",
                 isError: true,
             });
             return;
@@ -50,6 +51,7 @@
                 hour: parseInt(hour, 10),
                 minute: parseInt(minute, 10),
                 timezone,
+                schedule_type: scheduleType,
             });
             loadSchedules();
         } catch (e: any) {
@@ -104,7 +106,10 @@
     <ul id="schedules-list" class="item-list">
         {#each $schedules as schedule (schedule.id)}
             <li>
-                <span>{formatSchedule(schedule.time)}</span>
+                <div class="schedule-info">
+                    <span class="schedule-time">{formatSchedule(schedule.time)}</span>
+                    <span class="schedule-type-badge">{schedule.schedule_type || 'rss'}</span>
+                </div>
                 <button
                     on:click={() => deleteSchedule(schedule.id)}
                     class="delete-btn">×</button
@@ -131,6 +136,10 @@
                 {#each timezones as tz}
                     <option value={tz}>{tz}</option>
                 {/each}
+            </select>
+            <select bind:value={scheduleType} required>
+                <option value="rss">RSS Generator</option>
+                <option value="read_it_later">Read It Later</option>
             </select>
             <button type="submit" class="add-btn"> Add Schedule </button>
         </div>

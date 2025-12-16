@@ -17,6 +17,12 @@ pub struct Schedule {
     pub id: Option<i64>,
     pub cron_expression: String,
     pub active: bool,
+    #[serde(default = "default_schedule_type")]
+    pub schedule_type: String,
+}
+
+fn default_schedule_type() -> String {
+    "rss".to_string()
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -54,6 +60,7 @@ pub struct ScheduleResponse {
     pub id: i64,
     pub time: String,
     pub active: bool,
+    pub schedule_type: String,
 }
 
 #[derive(Deserialize)]
@@ -61,6 +68,8 @@ pub struct AddScheduleRequest {
     pub hour: u32,
     pub minute: u32,
     pub timezone: String,
+    #[serde(default = "default_schedule_type")]
+    pub schedule_type: String,
 }
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ReadItLaterArticle {

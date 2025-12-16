@@ -19,10 +19,22 @@ pub fn init_db(path: &str) -> rusqlite::Result<Connection> {
             id INTEGER PRIMARY KEY,
             cron_expression TEXT NOT NULL,
             active BOOLEAN NOT NULL DEFAULT 1,
+            schedule_type TEXT NOT NULL DEFAULT 'rss',
             created_at TEXT NOT NULL
         )",
         [],
     )?;
+
+  //For init migration ,will move it to external script
+    let count: i32 = conn.query_row(
+        "SELECT count(*) FROM pragma_table_info('schedules') WHERE name='schedule_type'",
+        [],
+        |row| row.get(0),
+    ).unwrap_or(0);
+
+    if count == 0 {
+        conn.execute("ALTER TABLE schedules ADD COLUMN schedule_type TEXT NOT NULL DEFAULT 'rss'", [])?;
+    }
 
     conn.execute(
         "CREATE TABLE IF NOT EXISTS email_config (

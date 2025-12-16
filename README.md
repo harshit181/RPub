@@ -10,13 +10,14 @@ It also serves an OPDS feed, making it easy to download the generated EPUBs dire
 ## Roadmap
 
 - [x] Add email send option for Kindle
-- [ ] Add mini Read it later feature .
+- [x] Add mini Read it later feature.
 - [ ] Make it multi-platform via Tauri or Dioxus
 - [ ] Add configuration for few of the hardcoded settings
 - [ ] Cleanup unused/unnecessary features 
 
 ## Features
 
+- **Read It Later:** Save articles to read later. It will created different EPUB for read later articles and marked as read once epub is generated.
 - **RSS/Atom Parsing:** Automatically fetches and parses content from your configured feeds.
 - **EPUB Generation:** Compiles articles into a well-formatted EPUB ebook.
 - **Image Optimization:** Downloads and processes images for optimal e-reader viewing (grayscale, resizing).
@@ -106,6 +107,39 @@ You can configure the application using environment variables:
 If these variables are set, the Web UI and API (except `/opds`) will require authentication.
 
 <s>
+### Read It Later
+
+You can save individual articles to be included in your next daily EPUB delivery.
+
+**Web UI:**
+1.  Go to the "Read Later" tab.
+2.  Paste the article URL and click "Add".
+
+**Android Integration (HTTP Shortcuts):**
+You can easily add articles from your Android phone using the [HTTP Shortcuts](https://play.google.com/store/apps/details?id=ch.rmy.android.http_shortcuts) app.
+
+1.  **Install** the "HTTP Shortcuts" app.
+2.  **Create a new shortcut**:
+    -   **Name:** Add to rsspub
+    -   **Method:** POST
+    -   **URL:** `http://<your-server-ip>/read-it-later`
+    -   **Body Type:** JSON
+    -   **Body Content:**
+        ```json
+        {
+          "url": "{share_text}"
+        }
+        ```
+    -   *Note: `{share_text}` is a variable that will be replaced by the URL you share.*
+3.  **Authentication (if enabled):**
+    -   Go to "Authentication" section of the shortcut settings.
+    -   Select "Basic Authentication".
+    -   Enter your `RPUB_USERNAME` and `RPUB_PASSWORD`.
+4.  **Usage:**
+    -   When browsing an article in Chrome or any app, tap **Share**.
+    -   Select **HTTP Shortcuts**.
+    -   Select your **Add to rsspub** shortcut.
+
 ### Building with Optimization (Optional) 
 
 For better memory usage during image processing (recommended for low-memory devices), you can enable the `mem_opt` feature (requires `libvips` installed on your system):

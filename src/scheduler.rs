@@ -34,11 +34,21 @@ pub async fn init_scheduler(db_conn: Arc<Mutex<Connection>>) -> Result<JobSchedu
 
             match Job::new_async(schedule.cron_expression.as_str(), move |_uuid, _l| {
                 let db = db_clone.clone();
+                let job_type = schedule.schedule_type.clone();
                 Box::pin(async move {
-                    info!("Running scheduled generation...");
-                    if let Err(e) = run_scheduled_generation(db).await {
-                        error!("Scheduled generation failed: {}", e);
+                    info!("Running scheduled generation for type: {}", job_type);
+                    if job_type == "rss" {
+                        if let Err(e) = run_scheduled_generation(db).await {
+                             error!("Scheduled generation (RSS) failed: {}", e);
+                        }
+                    } else if job_type == "read_it_later" {
+                         if let Err(e) = run_read_it_later_generation(db).await {
+                             error!("Scheduled generation (Read It Later) failed: {}", e);
+                         }
+                    } else {
+                        error!("Unknown schedule type: {}", job_type);
                     }
+
                 })
             }) {
                 Ok(job) => {
@@ -70,9 +80,41 @@ async fn run_scheduled_generation(db: Arc<Mutex<Connection>>) -> Result<()> {
 
     let filename = processor::generate_and_save(feeds, &db, crate::util::EPUB_OUTPUT_DIR).await?;
     info!("Scheduled generation completed: {}", filename);
-
     email::check_and_send_email(db, &filename).await?;
 
+    Ok(())
+}
+
+async fn run_read_it_later_generation(db: Arc<Mutex<Connection>>) -> Result<()> {
+    let articles = {
+         let conn = db.lock().map_err(|_| anyhow::anyhow!("DB lock failed"))?;
+         db::get_read_it_later_articles(&conn, true)?
+    };
+
+    if articles.is_empty() {
+        info!("No unread articles to deliver.");
+        return Ok(());
+    }
+    let article_ids: Vec<i64> = articles.iter().filter_map(|a| a.id).collect();
+
+    let filename = processor::generate_read_it_later_epub(articles, crate::util::EPUB_OUTPUT_DIR).await?;
+    info!("Read It Later generation completed: {}", filename);
+
+
+    if !article_ids.is_empty() {
+        match db.lock() {
+            Ok(conn) => {
+                if let Err(e) = db::mark_articles_as_read(&conn, &article_ids) {
+                    error!("Failed to mark articles as read: {}", e);
+                } else {
+                    info!("Marked {} articles as read", article_ids.len());
+                }
+            }
+            Err(_) => error!("Failed to lock DB to mark articles as read"),
+        }
+    }
+
+    email::check_and_send_email(db, &filename).await?;
     Ok(())
 }
 
