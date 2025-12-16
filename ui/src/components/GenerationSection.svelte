@@ -1,6 +1,6 @@
 <script lang="ts">
     import { api } from "../lib/api";
-    import { downloads, emailConfig, isAuthenticated } from "../lib/store";
+    import { downloads } from "../lib/store";
 
     let isGenerating = false;
     let status = "";
@@ -11,17 +11,9 @@
         status = "Requesting generation...";
 
         try {
-            let send_email = false;
-
-            emailConfig.subscribe((c) => {
-                if (c) send_email = c.enable_auto_send;
-            })();
-
-            const res = await api("/generate", "POST", {
-                feeds: [],
-                send_email,
+            await api("/generate", "POST", {
+                feeds: []
             });
-
             status = "Generation started in background. Please wait...";
 
             let checks = 0;

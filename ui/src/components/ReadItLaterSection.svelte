@@ -1,6 +1,7 @@
 <script lang="ts">
     import { onMount } from "svelte";
     import { api } from "../lib/api";
+    import {popup} from "../lib/store";
 
     let url = "";
     let articles: any[] = [];
@@ -12,7 +13,12 @@
             articles = await api("/read-it-later");
         } catch (e) {
             console.error(e);
-            alert("Failed to load articles");
+            popup.set({
+                visible: true,
+                title: "Failed to load articles",
+                message: "Failed to load articles",
+                isError: true,
+            });
         }
     }
 
@@ -25,7 +31,12 @@
             await loadArticles();
         } catch (e) {
             console.error(e);
-            alert("Failed to add article");
+            popup.set({
+                visible: true,
+                title: "Failed to add articles",
+                message: "Failed to add articles",
+                isError: true,
+            });
         } finally {
             loading = false;
         }
@@ -37,7 +48,12 @@
             await loadArticles();
         } catch (e) {
             console.error(e);
-            alert("Failed to update status");
+            popup.set({
+                visible: true,
+                title: "Failed to update status",
+                message: "Failed to update status",
+                isError: true,
+            });
         }
     }
 
@@ -48,7 +64,12 @@
             await loadArticles();
         } catch (e) {
             console.error(e);
-            alert("Failed to delete article");
+            popup.set({
+                visible: true,
+                title: "Failed to delete articles",
+                message: "Failed to delete articles",
+                isError: true,
+            });
         }
     }
 
@@ -56,10 +77,20 @@
         delivering = true;
         try {
             await api("/read-it-later/deliver", "POST");
-            alert("Delivery started! You will receive an email shortly.");
+            popup.set({
+                visible: true,
+                title: "Generation started",
+                message: "Generation started!",
+                isError: false,
+            });
         } catch (e) {
             console.error(e);
-            alert("Failed to start delivery");
+            popup.set({
+                visible: true,
+                title: "Generation failed",
+                message: "Generation failed!",
+                isError: true,
+            });
         } finally {
             delivering = false;
         }
