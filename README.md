@@ -6,6 +6,8 @@
 It also serves an OPDS feed, making it easy to download the generated EPUBs directly to compatible readers (like KOReader, Moon+ Reader, etc.).
 
 ![rsspub screenshot](screenshot.png)
+![rsspub screenshot](screenshot2.png)
+![rsspub screenshot](screenshot3.png)
 
 ## Roadmap
 
