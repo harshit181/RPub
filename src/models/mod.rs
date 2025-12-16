@@ -68,7 +68,6 @@ pub struct AddScheduleRequest {
 pub struct ReadItLaterArticle {
     pub id: Option<i64>,
     pub url: String,
-    pub title: Option<String>,
     pub read: bool,
     pub created_at: String,
 }
@@ -76,7 +75,6 @@ pub struct ReadItLaterArticle {
 #[derive(Deserialize)]
 pub struct AddReadItLaterRequest {
     pub url: String,
-    pub title: Option<String>,
 }
 
 #[derive(Deserialize)]

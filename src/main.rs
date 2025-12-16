@@ -47,7 +47,7 @@ async fn main() {
         scheduler: Arc::new(TokioMutex::new(sched)),
     });
 
-    tokio::fs::create_dir_all(util::EPUBS_OUTPUT_DIR).await.unwrap();
+    tokio::fs::create_dir_all(util::EPUB_OUTPUT_DIR).await.unwrap();
 
     let app = routes::create_router(state);
 

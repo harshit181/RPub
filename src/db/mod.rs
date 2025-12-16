@@ -109,10 +109,10 @@ pub fn save_email_config(conn: &Connection, config: &EmailConfig) -> Result<()> 
     Ok(())
 }
 
-pub fn add_read_it_later_article(conn: &Connection, url: &str, title: Option<&str>) -> Result<()> {
+pub fn add_read_it_later_article(conn: &Connection, url: &str) -> Result<()> {
     conn.execute(
-        "INSERT OR IGNORE INTO read_it_later (url, title, created_at) VALUES (?1, ?2, ?3)",
-        params![url, title, Utc::now().to_rfc3339()],
+        "INSERT OR IGNORE INTO read_it_later (url, created_at) VALUES (?1, ?2)",
+        params![url, Utc::now().to_rfc3339()],
     )?;
     Ok(())
 }
@@ -121,7 +121,7 @@ pub fn get_read_it_later_articles(
     conn: &Connection,
     unread_only: bool,
 ) -> Result<Vec<ReadItLaterArticle>> {
-    let mut query = "SELECT id, url, title, read, created_at FROM read_it_later".to_string();
+    let mut query = "SELECT id, url, read, created_at FROM read_it_later".to_string();
     if unread_only {
         query.push_str(" WHERE read = 0");
     }
@@ -132,9 +132,8 @@ pub fn get_read_it_later_articles(
         Ok(ReadItLaterArticle {
             id: Some(row.get(0)?),
             url: row.get(1)?,
-            title: row.get(2)?,
-            read: row.get(3)?,
-            created_at: row.get(4)?,
+            read: row.get(2)?,
+            created_at: row.get(3)?,
         })
     })?;
 

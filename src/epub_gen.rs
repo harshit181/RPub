@@ -79,7 +79,7 @@ pub async fn generate_epub_data<W: Write + Seek + Send + 'static>(
             )
             .map_err(|e| anyhow::anyhow!("{}", e))?;
 
-        let cover_path = "static/cover.jpg";
+        let cover_path = util::COVER_LOCATION;
         if std::path::Path::new(cover_path).exists() {
             match std::fs::read(cover_path) {
                 Ok(cover_data) => {

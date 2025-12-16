@@ -41,7 +41,7 @@ pub async fn opds_handler(headers: HeaderMap) -> Result<impl IntoResponse, (Stat
 
     let base_url = format!("{}://{}", scheme, host);
 
-    let xml = opds::generate_opds_feed(&base_url, util::EPUBS_OUTPUT_DIR)
+    let xml = opds::generate_opds_feed(&base_url, util::EPUB_OUTPUT_DIR)
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
@@ -76,7 +76,7 @@ pub async fn upload_cover(mut multipart: Multipart) -> Result<StatusCode, (Statu
                 return Err((StatusCode::BAD_REQUEST, "Empty file".to_string()));
             }
 
-            let path = "static/cover.jpg";
+            let path = util::COVER_LOCATION;
             let mut file = tokio::fs::File::create(path).await.map_err(|e| {
                 (
                     StatusCode::INTERNAL_SERVER_ERROR,

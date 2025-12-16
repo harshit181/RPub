@@ -1,10 +1,11 @@
+use std::sync::LazyLock;
 use regex::Regex;
 use ammonia::Builder;
 use reqwest::Client;
 use dom_smoothie::{Config, TextMode};
 
-pub const EPUBS_OUTPUT_DIR: &str = "static/epubs";
-
+pub const EPUB_OUTPUT_DIR: &str = "static/epubs";
+pub const COVER_LOCATION: &str = "static/cover.jpg";
 pub fn clean_html(html: &str) -> String {
     let mut builder = Builder::new();
     builder.add_tags(&[
@@ -36,9 +37,8 @@ pub fn clean_html(html: &str) -> String {
 
 pub fn fix_xhtml(html: &str) -> String {
     let mut fixed = html.to_string();
-
-    let amp_regex = Regex::new(r"&([a-zA-Z][a-zA-Z0-9]*;|#\d+;|#x[0-9a-fA-F]+;)?").unwrap();
-    fixed = amp_regex
+    static AMP_REGEX: LazyLock<Regex> =LazyLock::new(|| Regex::new(r"&([a-zA-Z][a-zA-Z0-9]*;|#\d+;|#x[0-9a-fA-F]+;)?").unwrap());
+    fixed = AMP_REGEX
         .replace_all(&fixed, |caps: &regex::Captures| {
             if caps.get(1).is_some() {
                 caps[0].to_string()
@@ -47,9 +47,8 @@ pub fn fix_xhtml(html: &str) -> String {
             }
         })
         .to_string();
-
-    let attr_regex = Regex::new(r#"\b(alt|title)\s*=\s*(?:"([^"]*)"|'([^']*)')"#).unwrap();
-    fixed = attr_regex
+    static ATTR_REGEX: LazyLock<Regex> =LazyLock::new(|| Regex::new(r#"\b(alt|title)\s*=\s*(?:"([^"]*)"|'([^']*)')"#).unwrap());
+    fixed = ATTR_REGEX
         .replace_all(&fixed, |caps: &regex::Captures| {
             let attr_name = &caps[1];
 
@@ -63,15 +62,12 @@ pub fn fix_xhtml(html: &str) -> String {
             format!("{}={}{}{}", attr_name, quote, escaped_value, quote)
         })
         .to_string();
-
-    let img_regex = Regex::new(r"<img([^>]*[^/])>").unwrap();
-    fixed = img_regex.replace_all(&fixed, "<img$1 />").to_string();
-
-    let br_regex = Regex::new(r"<br\s*>").unwrap();
-    fixed = br_regex.replace_all(&fixed, "<br />").to_string();
-
-    let hr_regex = Regex::new(r"<hr\s*>").unwrap();
-    fixed = hr_regex.replace_all(&fixed, "<hr />").to_string();
+    static IMG_REGEX: LazyLock<Regex> =LazyLock::new(|| Regex::new(r"<img([^>]*[^/])>").unwrap());
+    fixed = IMG_REGEX.replace_all(&fixed, "<img$1 />").to_string();
+    static BR_REGEX: LazyLock<Regex> =LazyLock::new(|| Regex::new(r"<br\s*>").unwrap());
+    fixed = BR_REGEX.replace_all(&fixed, "<br />").to_string();
+    static HR_REGEX: LazyLock<Regex> =LazyLock::new(|| Regex::new(r"<hr\s*>").unwrap());
+    fixed = HR_REGEX.replace_all(&fixed, "<hr />").to_string();
 
     fixed
 }
@@ -102,7 +98,7 @@ pub fn escape_xml(s: &str) -> String {
         .replace("'", "&apos;")
 }
 
-pub async fn fetch_full_content(client: &Client, url: &str) -> anyhow::Result<String> {
+pub async fn fetch_full_content(client: &Client, url: &str) -> anyhow::Result<(String, String)> {
     let html = client.get(url).send().await?.text().await?;
     let cfg = Config {
         text_mode: TextMode::Markdown,
@@ -112,5 +108,5 @@ pub async fn fetch_full_content(client: &Client, url: &str) -> anyhow::Result<St
     let extracted = readability
         .parse()
         .map_err(|e| anyhow::anyhow!("DomSmoothie error: {:?}", e))?;
-    Ok(extracted.content.to_string())
+    Ok((extracted.title, extracted.content.to_string()))
 }

@@ -30,7 +30,7 @@ pub async fn add_read_it_later(
             "DB lock failed".to_string(),
         )
     })?;
-    db::add_read_it_later_article(&db, &payload.url, payload.title.as_deref())
+    db::add_read_it_later_article(&db, &payload.url)
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
     Ok(StatusCode::CREATED)
 }
@@ -93,7 +93,7 @@ pub async fn deliver_read_it_later(
 
     tokio::spawn(async move {
         info!("Starting background Read It Later EPUB generation...");
-        match processor::generate_read_it_later_epub(articles, util::EPUBS_OUTPUT_DIR).await {
+        match processor::generate_read_it_later_epub(articles, util::EPUB_OUTPUT_DIR).await {
             Ok(filename) => {
                 info!("Background generation completed successfully: {}", filename);
                 let config_result = {
@@ -103,7 +103,7 @@ pub async fn deliver_read_it_later(
 
                 match config_result {
                     Ok(Some(config)) => {
-                        let epub_path = std::path::Path::new(util::EPUBS_OUTPUT_DIR).join(&filename);
+                        let epub_path = std::path::Path::new(util::EPUB_OUTPUT_DIR).join(&filename);
                         info!("Sending email for {}...", filename);
                         if let Err(e) = email::send_epub(&config, &epub_path).await {
                             tracing::error!("Failed to send email: {}", e);

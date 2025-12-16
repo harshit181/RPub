@@ -3,7 +3,6 @@
     import { api } from "../lib/api";
 
     let url = "";
-    let title = "";
     let articles: any[] = [];
     let loading = false;
     let delivering = false;
@@ -21,9 +20,8 @@
         if (!url) return;
         loading = true;
         try {
-            await api("/read-it-later", "POST", { url, title: title || null });
+            await api("/read-it-later", "POST", { url });
             url = "";
-            title = "";
             await loadArticles();
         } catch (e) {
             console.error(e);
@@ -80,7 +78,6 @@
 
     <div class="add-form">
         <input type="text" placeholder="URL" bind:value={url} />
-        <input type="text" placeholder="Title (Optional)" bind:value={title} />
         <button class="btn secondary" on:click={addArticle} disabled={loading || !url}>
             {loading ? "Adding..." : "Add"}
         </button>
@@ -90,7 +87,7 @@
         {#each articles as article}
             <div class="item {article.read ? 'read' : ''}">
                 <div class="info">
-                    <div class="title">{article.title || article.url}</div>
+                    <div class="title">{article.url}</div>
                     <div class="meta">{new Date(article.created_at).toLocaleString()}</div>
                 </div>
                 <div class="actions">

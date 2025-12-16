@@ -41,7 +41,6 @@ pub fn init_db(path: &str) -> rusqlite::Result<Connection> {
         "CREATE TABLE IF NOT EXISTS read_it_later (
             id INTEGER PRIMARY KEY,
             url TEXT NOT NULL UNIQUE,
-            title TEXT,
             read BOOLEAN NOT NULL DEFAULT 0,
             created_at TEXT NOT NULL
         )",

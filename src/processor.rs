@@ -8,6 +8,7 @@ use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use tracing::{info, warn};
+use crate::feed::Article;
 
 pub async fn generate_epub(
     feeds: Vec<Feed>,
@@ -24,6 +25,12 @@ pub async fn generate_epub(
         return Err(anyhow::anyhow!("No articles found in the last 24 hours."));
     }
 
+    generate_epub_from_articles(output_path, &articles).await?;
+
+    Ok(())
+}
+
+async fn generate_epub_from_articles(output_path: &str, articles: &Vec<Article>) -> Result<()> {
     let temp_path = get_temp_file_path(output_path);
     info!("Generating EPUB to temporary file: {:?}", temp_path);
     let file = std::fs::File::create(&temp_path)?;
@@ -39,7 +46,6 @@ pub async fn generate_epub(
             Err(anyhow::anyhow!("Failed to generate EPUB: {}", e))
         }
     }?;
-
     Ok(())
 }
 
@@ -74,7 +80,7 @@ pub async fn generate_and_save(
 pub async fn generate_read_it_later_epub(
     articles: Vec<ReadItLaterArticle>,
     output_dir: &str,
-) -> Result<String> {
+) -> Result<(String)> {
     let filename = format!(
         "read_it_later_{}.epub",
         Utc::now().format("%Y%m%d_%H%M%S")
@@ -92,12 +98,22 @@ pub async fn generate_read_it_later_epub(
 
     let mut fetched_articles = Vec::new();
 
+    fetch_all_article_with_content(articles, &client, &mut fetched_articles).await;
+
+    if fetched_articles.is_empty() {
+        return Err(anyhow::anyhow!("No content could be fetched."));
+    }
+    generate_epub_from_articles(&filepath, &fetched_articles).await?;
+    Ok(filename)
+}
+
+async fn fetch_all_article_with_content(articles: Vec<ReadItLaterArticle>, client: &Client, fetched_articles: &mut Vec<Article>) {
     for article in articles {
         info!("Fetching: {}", article.url);
         match util::fetch_full_content(&client, &article.url).await {
-            Ok(content) => {
+            Ok((title, content)) => {
                 fetched_articles.push(crate::feed::Article {
-                    title: article.title.unwrap_or_else(|| "Untitled".to_string()),
+                    title,
                     link: article.url.clone(),
                     content,
                     pub_date: DateTime::parse_from_rfc3339(&article.created_at)
@@ -116,24 +132,6 @@ pub async fn generate_read_it_later_epub(
                     source: "Read It Later Errors".to_string(),
                 });
             }
-        }
-    }
-
-    if fetched_articles.is_empty() {
-        return Err(anyhow::anyhow!("No content could be fetched."));
-    }
-
-    let temp_path = get_temp_file_path(&filepath);
-    let file = std::fs::File::create(&temp_path)?;
-
-    match epub_gen::generate_epub_data(&fetched_articles, file).await {
-        Ok(_) => {
-            std::fs::rename(&temp_path, &filepath)?;
-            Ok(filename)
-        }
-        Err(e) => {
-            let _ = std::fs::remove_file(&temp_path);
-            Err(anyhow::anyhow!("Failed to generate EPUB: {}", e))
         }
     }
 }

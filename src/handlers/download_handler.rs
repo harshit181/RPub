@@ -8,7 +8,7 @@ use crate::{db, email, processor, util};
 
 pub async fn list_downloads() -> Result<Json<Vec<String>>, (StatusCode, String)> {
     let mut files = Vec::new();
-    let mut entries = tokio::fs::read_dir(util::EPUBS_OUTPUT_DIR)
+    let mut entries = tokio::fs::read_dir(util::EPUB_OUTPUT_DIR)
         .await
         .map_err(|e| {
             (
@@ -66,7 +66,7 @@ pub async fn generate_epub_adhoc(
 
     tokio::spawn(async move {
         info!("Starting background EPUB generation...");
-        match processor::generate_and_save(feeds_to_fetch, &db_clone, util::EPUBS_OUTPUT_DIR).await
+        match processor::generate_and_save(feeds_to_fetch, &db_clone, util::EPUB_OUTPUT_DIR).await
         {
             Ok(filename) => {
                 info!("Background generation completed successfully: {}", filename);
@@ -81,7 +81,7 @@ pub async fn generate_epub_adhoc(
                     match config_result {
                         Ok(Some(config)) => {
                             let epub_path =
-                                std::path::Path::new(util::EPUBS_OUTPUT_DIR).join(&filename);
+                                std::path::Path::new(util::EPUB_OUTPUT_DIR).join(&filename);
                             info!("Sending email for {}...", filename);
                             if let Err(e) = email::send_epub(&config, &epub_path).await {
                                 tracing::error!("Failed to send email: {}", e);
