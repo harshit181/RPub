@@ -142,7 +142,10 @@ You can easily add articles from your Android phone using the [HTTP Shortcuts](h
     -   Select **HTTP Shortcuts**.
     -   Select your **Add to rsspub** shortcut.
 
-**Added sample rsspub_http_shortcuts.json which can be imported in the app**
+**Added sample rsspub_http_shortcuts.json which can be imported in the app**.   
+
+
+**IOS Integration (Inbuild Shortcut):**
      <s>
     
 ### Building with Optimization (Optional) 
