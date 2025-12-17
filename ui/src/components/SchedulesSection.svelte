@@ -116,6 +116,30 @@
         const cron = schedule.cron_expression;
         if (!cron) return "Unknown";
         
+        let localTimeStr = "";
+        let dayShift = 0;
+        
+        if (schedule.time) {
+            const date = new Date(schedule.time);
+            localTimeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            
+            try {
+                const serverDatePart = schedule.time.split('T')[0];
+                const [sY, sM, sD] = serverDatePart.split('-').map(Number);
+                
+                const lY = date.getFullYear();
+                const lM = date.getMonth() + 1; 
+                const lD = date.getDate();
+                
+                const sTime = new Date(sY, sM - 1, sD).getTime();
+                const lTime = new Date(lY, lM - 1, lD).getTime();
+                const diff = lTime - sTime;
+  
+            } catch (e) {
+                console.error("Error parsing date for shift", e);
+            }
+        }
+
         const parts = cron.split(" ");
         if (parts.length < 5) return cron;
 
@@ -124,17 +148,24 @@
         const dom = parts[3];
         const dow = parts[5];
         
-        const timeStr = `${hour}:${min}`;
+        const displayTime = localTimeStr || `${hour}:${min}`;
         
         if (dom === "*" && dow === "*") {
-            return `Daily at ${timeStr}`;
+            return `Daily at ${displayTime}`;
         } else if (dom === "*" && dow !== "*") {
              const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-             const d = parseInt(dow, 10);
+             let d = parseInt(dow, 10);
+             
+             if (!isNaN(d)) {
+                 d = d + dayShift;
+                 if (d < 0) d += 7;
+                 d = d % 7;
+             }
+             
              const dayName = !isNaN(d) && days[d] ? days[d] : dow;
-             return `Weekly on ${dayName} at ${timeStr}`;
+             return `Weekly on ${dayName} at ${displayTime}`;
         } else if (dom !== "*" && dow === "*") {
-             return `Monthly on day ${dom} at ${timeStr}`;
+             return `Monthly on day ${dom} at ${displayTime}`;
         }
         return cron;
     }
