@@ -164,52 +164,142 @@
             </li>
         {/each}
     </ul>
-    <form on:submit|preventDefault={addSchedule} id="add-schedule-form">
-        <div class="frequency-row" style="margin-bottom: 0.5rem;">
-            <select bind:value={frequency}>
-                <option value="daily">Daily</option>
-                <option value="weekly">Weekly</option>
-                <option value="monthly">Monthly</option>
-            </select>
-            {#if frequency === "weekly"}
-                <select bind:value={dayOfWeek}>
-                    {#each daysOfWeek as d}
-                        <option value={d.val}>{d.label}</option>
+    <form on:submit|preventDefault={addSchedule} id="add-schedule-form" class="modern-form">
+        <div class="form-grid">
+            <div class="input-group frequency-group">
+                <select bind:value={frequency} class="modern-select" aria-label="Frequency">
+                    <option value="daily">Daily</option>
+                    <option value="weekly">Weekly</option>
+                    <option value="monthly">Monthly</option>
+                </select>
+                {#if frequency === "weekly"}
+                    <select bind:value={dayOfWeek} class="modern-select" aria-label="Day of Week">
+                        {#each daysOfWeek as d}
+                            <option value={d.val}>{d.label}</option>
+                        {/each}
+                    </select>
+                {/if}
+                {#if frequency === "monthly"}
+                    <select bind:value={dayOfMonth} class="modern-select" aria-label="Day of Month">
+                        {#each daysOfMonth as d}
+                            <option value={d}>{d}</option>
+                        {/each}
+                    </select>
+                {/if}
+            </div>
+
+            <div class="input-group time-group">
+                <select bind:value={hour} required class="modern-select time-select">
+                    <option value="" disabled selected>HH</option>
+                    {#each hours as h}
+                        <option value={h}>{h}</option>
                     {/each}
                 </select>
-            {/if}
-            {#if frequency === "monthly"}
-                <select bind:value={dayOfMonth}>
-                    {#each daysOfMonth as d}
-                        <option value={d}>{d}</option>
+                <span class="time-separator">:</span>
+                <select bind:value={minute} required class="modern-select time-select">
+                    <option value="" disabled selected>MM</option>
+                    {#each minutes as m}
+                        <option value={m}>{m}</option>
                     {/each}
                 </select>
-            {/if}
-        </div>
-        <div class="time-row">
-            <select bind:value={hour} required>
-                <option value="" disabled selected>00</option>
-                {#each hours as h}
-                    <option value={h}>{h}</option>
-                {/each}
-            </select>
-            <span>:</span>
-            <select bind:value={minute} required>
-                <option value="" disabled selected>00</option>
-                {#each minutes as m}
-                    <option value={m}>{m}</option>
-                {/each}
-            </select>
-            <select bind:value={timezone} id="timezone-select" required>
+            </div>
+
+            <select bind:value={timezone} id="timezone-select" required class="modern-select timezone-select">
                 {#each timezones as tz}
                     <option value={tz}>{tz}</option>
                 {/each}
             </select>
-            <select bind:value={scheduleType} required>
+
+            <select bind:value={scheduleType} required class="modern-select type-select">
                 <option value="rss">RSS Generator</option>
                 <option value="read_it_later">Read It Later</option>
             </select>
-            <button type="submit" class="add-btn"> Add </button>
+            
+            <button type="submit" class="add-btn-modern">Add Schedule</button>
         </div>
     </form>
 </section>
+
+<style>
+    .modern-form {
+        margin-top: 1rem;
+        padding-top: 1rem;
+        border-top: 1px solid var(--card-border, #eee);
+    }
+
+    .form-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 0.75rem;
+        align-items: center;
+    }
+
+    .input-group {
+        display: flex;
+        gap: 0.5rem;
+        align-items: center;
+    }
+
+    .frequency-group {
+        grid-column: span 2; 
+    }
+
+    .time-group {
+        justify-content: flex-start;
+    }
+
+    .modern-select {
+        padding: 0.5rem;
+        border: 1px solid var(--input-border, #ccc);
+        border-radius: 6px;
+        background-color: var(--input-bg, #1a202c);
+        color: var(--text-primary, #fff);
+        font-size: 0.9rem;
+        width: 100%;
+        min-width: 0;
+    }
+
+    .time-select {
+        width: 60px;
+        text-align: center;
+    }
+
+    .time-separator {
+        font-weight: bold;
+        color: var(--text-secondary, #666);
+    }
+    
+    .timezone-select {
+        min-width: 120px;
+    }
+
+    .add-btn-modern {
+        background-color: var(--accent-blue, #007bff);
+        color: white;
+        border: none;
+        padding: 0.6rem 1rem;
+        border-radius: 6px;
+        cursor: pointer;
+        font-weight: 600;
+        transition: background-color 0.2s;
+        grid-column: 1 / -1; 
+    }
+
+    .add-btn-modern:hover {
+        background-color: var(--accent-blue-hover, #0056b3);
+    }
+
+    @media (min-width: 768px) {
+        .form-grid {
+            grid-template-columns: 2fr 1fr 1.5fr 1.5fr; 
+        }
+        
+        .frequency-group {
+             grid-column: span 1;
+        }
+        
+        .add-btn-modern {
+             grid-column: auto;
+        }
+    }
+</style>
