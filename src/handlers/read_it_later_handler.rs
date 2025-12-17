@@ -32,7 +32,7 @@ pub async fn add_read_it_later(
         )
     })?;
     let is_valid=is_valid_web_url(&payload.url);
-    if(is_valid) {
+    if is_valid {
         db::add_read_it_later_article(&db, &payload.url)
             .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
     }
