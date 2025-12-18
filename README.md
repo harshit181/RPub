@@ -1,7 +1,7 @@
 # rsspub
 [![Deploy to Koyeb](https://www.koyeb.com/static/images/deploy/button.svg)](https://app.koyeb.com/deploy?name=rsspub&type=docker&image=harshit181%2Frsspub%3Alatest&instance_type=eco-nano&regions=sin&env%5Brsspub_PASSWORD%5D=root&env%5Brsspub_USERNAME%5D=root&ports=3000%3Bhttp%3B%2F&hc_protocol%5B3000%5D=tcp&hc_grace_period%5B3000%5D=5&hc_interval%5B3000%5D=30&hc_restart_limit%5B3000%5D=3&hc_timeout%5B3000%5D=5&hc_path%5B3000%5D=%2F&hc_method%5B3000%5D=get)
 
-**rsspub** is a self-hosted Rust application that turns your favorite RSS/Atom feeds into a personal daily newspaper (EPUB). It fetches articles, processes images, and bundles everything into an EPUB file that you can read on your e-reader or tablet.
+**rsspub** is a self-hosted Rust application that turns your favorite RSS/Atom feeds/ Read Later articles into a personal daily newspaper (EPUB). It fetches articles, processes images, and bundles everything into an EPUB file that you can read on your e-reader or tablet.
 
 It also serves an OPDS feed, making it easy to download the generated EPUBs directly to compatible readers (like KOReader, Moon+ Reader, etc.).
 
@@ -28,8 +28,8 @@ It also serves an OPDS feed, making it easy to download the generated EPUBs dire
 - **Scheduling:** Automated generation based on cron expressions.
 - **Authentication:** Optional Basic Authentication to protect your instance.
 - **Email Delivery:** Automatically send generated EPUBs to a configured email address.
-- **Performance:** Built with Rust, Axum, and Tokio for high performance and low resource usage. Includes optional `libvips` support for efficient image processing.
-
+- **Performance:** Built with Rust, Axum, and Tokio for high performance and low resource usage.
+  
 ## Getting Started
 
 ### Prerequisites
