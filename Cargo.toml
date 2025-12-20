@@ -22,7 +22,7 @@ rusqlite = { version = "0.37", features = ["bundled"] }
 tokio-cron-scheduler = "0.15.1"
 opml = "1.1.6"
 lettre = { version = "0.11.19",default-features = false, features = ["tokio1", "tokio1-rustls-tls", "smtp-transport","builder"] }
-libvips = { version = "1.7.1", optional = true }
+libvips = { version = "1.7.3", optional = true }
 regex = "1.10"
 ammonia = "4.1.2"
 tempfile = "3.23.0"

@@ -1575,9 +1575,9 @@ dependencies = [
 
 [[package]]
 name = "libvips"
-version = "1.7.1"
+version = "1.7.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d9930af49f9da4f576a2ec52ed8d767f6389f0c8cadfcdeaccb9c7b75ca83f8a"
+checksum = "b7397f05816b7e92ff85fb064c52cc6cfb4ba826b1bc7884a20fe6e92f57db75"
 dependencies = [
  "num-derive",
  "num-traits",
