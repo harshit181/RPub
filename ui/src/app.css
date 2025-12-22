@@ -521,3 +521,33 @@ input:checked+.slider:before {
   color: var(--text-secondary);
   width: fit-content;
 }
+
+.add-btn-modern {
+  background-color: var(--accent-blue, #007bff);
+  color: white;
+  border: none;
+  padding: 0.6rem 1rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: background-color 0.2s;
+  grid-column: 1 / -1;
+}
+
+.add-btn-modern:hover {
+  background-color: var(--accent-blue-hover, #0056b3);
+}
+
+@media (min-width: 768px) {
+  .form-grid {
+    grid-template-columns: 2fr 1fr 1.5fr 1.5fr;
+  }
+
+  .frequency-group {
+    grid-column: span 1;
+  }
+
+  .add-btn-modern {
+    grid-column: auto;
+  }
+}

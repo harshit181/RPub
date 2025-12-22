@@ -86,9 +86,11 @@ async fn run_scheduled_generation(db: Arc<Mutex<Connection>>) -> Result<()> {
 }
 
 async fn run_read_it_later_generation(db: Arc<Mutex<Connection>>) -> Result<()> {
-    let articles = {
+    let (articles, image_timeout) = {
          let conn = db.lock().map_err(|_| anyhow::anyhow!("DB lock failed"))?;
-         db::get_read_it_later_articles(&conn, true)?
+         let articles = db::get_read_it_later_articles(&conn, true)?;
+         let config = db::get_general_config(&conn)?;
+         (articles, config.image_timeout_seconds)
     };
 
     if articles.is_empty() {
@@ -97,7 +99,7 @@ async fn run_read_it_later_generation(db: Arc<Mutex<Connection>>) -> Result<()> 
     }
     let article_ids: Vec<i64> = articles.iter().filter_map(|a| a.id).collect();
 
-    let filename = processor::generate_read_it_later_epub(articles, crate::util::EPUB_OUTPUT_DIR).await?;
+    let filename = processor::generate_read_it_later_epub(articles, crate::util::EPUB_OUTPUT_DIR, image_timeout).await?;
     info!("Read It Later generation completed: {}", filename);
 
 

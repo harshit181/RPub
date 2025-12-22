@@ -1,7 +1,7 @@
 use chrono::Utc;
 use rusqlite::{params, Connection, Result};
 
-use crate::models::{EmailConfig, Feed, ReadItLaterArticle, Schedule};
+use crate::models::{EmailConfig, Feed, GeneralConfig, ReadItLaterArticle, Schedule};
 
 pub mod schema_init;
 
@@ -170,5 +170,32 @@ pub fn mark_articles_as_read(conn: &Connection, ids: &[i64]) -> Result<()> {
         stmt.execute(params![id])?;
     }
     
+    Ok(())
+}
+
+pub fn get_general_config(conn: &Connection) -> Result<GeneralConfig> {
+    let mut stmt = conn.prepare("SELECT fetch_since_hours, image_timeout_seconds FROM general_config WHERE id = 1")?;
+    let mut config_iter = stmt.query_map([], |row| {
+        Ok(GeneralConfig {
+            fetch_since_hours: row.get(0)?,
+            image_timeout_seconds: row.get(1)?,
+        })
+    })?;
+
+    if let Some(config) = config_iter.next() {
+        Ok(config?)
+    } else {
+        Ok(GeneralConfig {
+            fetch_since_hours: 24,
+            image_timeout_seconds: 45,
+        })
+    }
+}
+
+pub fn update_general_config(conn: &Connection, config: &GeneralConfig) -> Result<()> {
+    conn.execute(
+        "UPDATE general_config SET fetch_since_hours = ?1, image_timeout_seconds = ?2 WHERE id = 1",
+        params![config.fetch_since_hours, config.image_timeout_seconds],
+    )?;
     Ok(())
 }

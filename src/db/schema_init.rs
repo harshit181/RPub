@@ -25,15 +25,20 @@ pub fn init_db(path: &str) -> rusqlite::Result<Connection> {
         [],
     )?;
 
-  //For init migration ,will move it to external script
-    let count: i32 = conn.query_row(
-        "SELECT count(*) FROM pragma_table_info('schedules') WHERE name='schedule_type'",
-        [],
-        |row| row.get(0),
-    ).unwrap_or(0);
+    //For init migration ,will move it to external script
+    let count: i32 = conn
+        .query_row(
+            "SELECT count(*) FROM pragma_table_info('schedules') WHERE name='schedule_type'",
+            [],
+            |row| row.get(0),
+        )
+        .unwrap_or(0);
 
     if count == 0 {
-        conn.execute("ALTER TABLE schedules ADD COLUMN schedule_type TEXT NOT NULL DEFAULT 'rss'", [])?;
+        conn.execute(
+            "ALTER TABLE schedules ADD COLUMN schedule_type TEXT NOT NULL DEFAULT 'rss'",
+            [],
+        )?;
     }
 
     conn.execute(
@@ -58,6 +63,14 @@ pub fn init_db(path: &str) -> rusqlite::Result<Connection> {
         )",
         [],
     )?;
-    
+
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS general_config (
+            id INTEGER PRIMARY KEY CHECK (id = 1),
+            fetch_since_hours INTEGER NOT NULL DEFAULT 24,
+            image_timeout_seconds INTEGER NOT NULL DEFAULT 45
+        )",
+        [],
+    )?;
     Ok(conn)
 }
