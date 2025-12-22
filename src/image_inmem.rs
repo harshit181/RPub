@@ -6,6 +6,7 @@ use reqwest::Client;
 use std::any::Any;
 use std::io::Cursor;
 use std::sync::LazyLock;
+use std::time::Duration;
 use tokio::sync::mpsc::Sender;
 use tracing::{error, info};
 use uuid::Uuid;
@@ -14,6 +15,7 @@ pub async fn process_images(
     html: &str,
     tx_m: &Sender<CompletionMessage>,
     seq_id: &usize,
+    timeout_seconds: u64,
 ) -> (String, usize) {
     let mut processed_html = html.to_string();
 
@@ -22,6 +24,7 @@ pub async fn process_images(
 
     let client = Client::builder()
         .user_agent("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+        .timeout(Duration::from_secs(timeout_seconds))
         .build()
         .unwrap_or_else(|_| Client::new());
 
@@ -46,66 +49,61 @@ pub async fn process_images(
         let sq = *seq_id;
         tokio::spawn(async move {
             info!("Processing image: {}", src_clone);
-            match download_image(&client, &src_clone).await {
-                Ok((img_data, format)) => match resize_and_grayscale(img_data, format).await {
-                    Ok(processed_data) => {
-                        let mime_type = "image/jpeg".to_string();
-                        let cursor = Cursor::new(processed_data);
-                        let res_part = EpubPart::Resource {
-                            filename,
-                            content: Box::new(cursor),
-                            mime_type,
-                        };
-                        let mut parts = Vec::new();
-                        parts.push(res_part);
-                        if let Err(_) = tx_m
-                            .send(CompletionMessage {
-                                sequence_id: sq,
-                                parts,
-                            })
-                            .await
-                        {
-                            info!("Failed to send images {} (receiver might be closed)", i);
+            match download_image(&client, &src_clone).await
+            {
+                    Ok((img_data, format)) => match resize_and_grayscale(img_data, format).await {
+                        Ok(processed_data) => {
+                            let mime_type = "image/jpeg".to_string();
+                            let cursor = Cursor::new(processed_data);
+                            let res_part = EpubPart::Resource {
+                                filename,
+                                content: Box::new(cursor),
+                                mime_type,
+                            };
+                            let mut parts = Vec::new();
+                            parts.push(res_part);
+                            if let Err(_) = tx_m
+                                .send(CompletionMessage {
+                                    sequence_id: sq,
+                                    parts,
+                                })
+                                .await
+                            {
+                                info!("Failed to send images {} (receiver might be closed)", i);
+                            }
+                            drop(tx_m);
+                            Ok("Completed")
                         }
-                        drop(tx_m);
-                        Ok("Completed")
-                    }
-                    Err(e) => {
-                        error!(
-                            "error while processing image {} with error {}",
-                            src_clone, e
-                        );
-                        if let Err(_) = tx_m
-                            .send(CompletionMessage {
-                                sequence_id: sq,
-                                parts: Vec::new(),
-                            })
-                            .await
-                        {
-                            info!("Failed to send images {} (Error)", i);
+                        Err(e) => {
+                            error!(
+                                "error while processing image {} with error {}",
+                                src_clone, e
+                            );
+                          return  send_empty_message_on_error(i, tx_m, sq).await;
                         }
-                        drop(tx_m);
-                        Err("Failed")
+                    },
+                    Err(_e) => {
+                        return send_empty_message_on_error(i, tx_m, sq).await;
                     }
-                },
-                Err(_e) => {
-                    if let Err(_) = tx_m
-                        .send(CompletionMessage {
-                            sequence_id: sq,
-                            parts: Vec::new(),
-                        })
-                        .await
-                    {
-                        info!("Failed to send images {} (Error)", i);
-                    }
-                    drop(tx_m);
-                    Err("Failed")
                 }
-            }
         });
     }
 
     (processed_html, total_images)
+}
+
+async fn send_empty_message_on_error(i: usize, tx_m: Sender<CompletionMessage>, sq: usize) ->Result<&'static str, &'static str> {
+    if let Err(_) = tx_m
+        .send(CompletionMessage {
+            sequence_id: sq,
+            parts: Vec::new(),
+        })
+        .await
+    {
+        info!("Failed to send images {} (Error)", i);
+    }
+    drop(tx_m);
+    return Err("Failed");
 }
 
 async fn download_image(client: &Client, url: &str) -> Result<(Vec<u8>, ImageFormat)> {

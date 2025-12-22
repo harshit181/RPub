@@ -18,24 +18,30 @@ pub async fn generate_epub(
     info!("Fetching {} feeds...", feeds.len());
 
     let (fetched_feeds, errors) = feed::fetch_feeds(&feeds).await;
-    let since = Utc::now() - ChronoDuration::hours(24);
+
+    let (since, image_timeout) = {
+        let conn = _db.lock().map_err(|_| anyhow::anyhow!("DB lock failed"))?;
+        let config = crate::db::get_general_config(&conn)?;
+        (Utc::now() - ChronoDuration::hours(config.fetch_since_hours as i64), config.image_timeout_seconds)
+    };
+    info!("Filtering items since: {}", since);
     let articles = feed::filter_items(fetched_feeds, errors, since).await;
 
     if articles.is_empty() {
         return Err(anyhow::anyhow!("No articles found in the last 24 hours."));
     }
 
-    generate_epub_from_articles(output_path, &articles).await?;
+    generate_epub_from_articles(output_path, &articles, image_timeout).await?;
 
     Ok(())
 }
 
-async fn generate_epub_from_articles(output_path: &str, articles: &Vec<Article>) -> Result<()> {
+async fn generate_epub_from_articles(output_path: &str, articles: &Vec<Article>, image_timeout: i32) -> Result<()> {
     let temp_path = get_temp_file_path(output_path);
     info!("Generating EPUB to temporary file: {:?}", temp_path);
     let file = std::fs::File::create(&temp_path)?;
 
-    match epub_gen::generate_epub_data(&articles, file).await {
+    match epub_gen::generate_epub_data(&articles, file, image_timeout).await {
         Ok(_) => {
             info!("EPUB generation successful. moving to {}", output_path);
             std::fs::rename(&temp_path, output_path)?;
@@ -80,6 +86,7 @@ pub async fn generate_and_save(
 pub async fn generate_read_it_later_epub(
     articles: Vec<ReadItLaterArticle>,
     output_dir: &str,
+    image_timeout: i32,
 ) -> Result<String> {
     let filename = format!(
         "read_it_later_{}.epub",
@@ -103,7 +110,7 @@ pub async fn generate_read_it_later_epub(
     if fetched_articles.is_empty() {
         return Err(anyhow::anyhow!("No content could be fetched."));
     }
-    generate_epub_from_articles(&filepath, &fetched_articles).await?;
+    generate_epub_from_articles(&filepath, &fetched_articles, image_timeout).await?;
     Ok(filename)
 }
 

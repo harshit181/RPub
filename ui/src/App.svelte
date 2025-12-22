@@ -8,6 +8,7 @@
     import SchedulesSection from "./components/SchedulesSection.svelte";
     import DownloadsSection from "./components/DownloadsSection.svelte";
     import EmailConfigSection from "./components/EmailConfigSection.svelte";
+    import GeneralConfigSection from "./components/GeneralConfigSection.svelte";
     import ReadItLaterSection from "./components/ReadItLaterSection.svelte";
     import Tabs from "./components/Tabs.svelte";
     import { onMount } from "svelte";
@@ -38,7 +39,6 @@
 <LoginOverlay />
 <Popup />
 
-
 {#if $isAuthenticated}
     <div class="container">
         <Header />
@@ -66,6 +66,7 @@
                 </div>
                 <div class="column right-col">
                     <CoverSection />
+                    <GeneralConfigSection />
                 </div>
             </main>
         {:else if activeTab === "Read It Later"}

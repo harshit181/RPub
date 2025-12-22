@@ -9,7 +9,7 @@ use std::sync::Arc;
 use tower::ServiceBuilder;
 use tower_http::{services::ServeDir, set_header::SetResponseHeaderLayer};
 use tracing::{info, warn};
-use crate::handlers::{auth_handler, download_handler, email_handler, feed_handler, read_it_later_handler, schedule_handler};
+use crate::handlers::{auth_handler, config_handler, download_handler, email_handler, feed_handler, read_it_later_handler, schedule_handler};
 
 pub fn create_router(state: Arc<AppState>) -> Router {
     let public_routes = Router::new().route("/opds", get(handlers::opds_handler));
@@ -29,6 +29,10 @@ pub fn create_router(state: Arc<AppState>) -> Router {
         .route(
             "/email-config",
             get(email_handler::get_email_config_handler).post(email_handler::update_email_config_handler),
+        )
+        .route(
+            "/general-config",
+            get(config_handler::get_general_config).post(config_handler::update_general_config),
         )
         .route(
             "/read-it-later",

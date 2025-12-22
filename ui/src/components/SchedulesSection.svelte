@@ -122,22 +122,6 @@
         if (schedule.time) {
             const date = new Date(schedule.time);
             localTimeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-            
-            try {
-                const serverDatePart = schedule.time.split('T')[0];
-                const [sY, sM, sD] = serverDatePart.split('-').map(Number);
-                
-                const lY = date.getFullYear();
-                const lM = date.getMonth() + 1; 
-                const lD = date.getDate();
-                
-                const sTime = new Date(sY, sM - 1, sD).getTime();
-                const lTime = new Date(lY, lM - 1, lD).getTime();
-                const diff = lTime - sTime;
-  
-            } catch (e) {
-                console.error("Error parsing date for shift", e);
-            }
         }
 
         const parts = cron.split(" ");
@@ -302,35 +286,5 @@
     
     .timezone-select {
         min-width: 120px;
-    }
-
-    .add-btn-modern {
-        background-color: var(--accent-blue, #007bff);
-        color: white;
-        border: none;
-        padding: 0.6rem 1rem;
-        border-radius: 6px;
-        cursor: pointer;
-        font-weight: 600;
-        transition: background-color 0.2s;
-        grid-column: 1 / -1; 
-    }
-
-    .add-btn-modern:hover {
-        background-color: var(--accent-blue-hover, #0056b3);
-    }
-
-    @media (min-width: 768px) {
-        .form-grid {
-            grid-template-columns: 2fr 1fr 1.5fr 1.5fr; 
-        }
-        
-        .frequency-group {
-             grid-column: span 1;
-        }
-        
-        .add-btn-modern {
-             grid-column: auto;
-        }
     }
 </style>

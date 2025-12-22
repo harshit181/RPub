@@ -14,6 +14,7 @@ use tracing::info;
 pub async fn generate_epub_data<W: Write + Seek + Send + 'static>(
     articles: &[Article],
     output: W,
+    image_timeout_seconds: i32,
 ) -> Result<()> {
     use crate::epub_message::{CompletionMessage, EpubPart};
     use crate::util;
@@ -231,7 +232,7 @@ pub async fn generate_epub_data<W: Write + Seek + Send + 'static>(
         let counter_ref = Arc::clone(&counter);
         join_set.spawn(async move {
             let cleaned_content = util::clean_html(&article.content);
-            let (processed_content,total_images_for_seq) = process_images(&cleaned_content,&tx_m,&seq_id).await;
+            let (processed_content,total_images_for_seq) = process_images(&cleaned_content,&tx_m,&seq_id, image_timeout_seconds as u64).await;
             counter_ref.fetch_add(total_images_for_seq, Ordering::Relaxed);
             let fixed_content = util::fix_xhtml(&processed_content);
             let content_html = format!(

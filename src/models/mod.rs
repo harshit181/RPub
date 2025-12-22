@@ -97,3 +97,14 @@ pub struct AddReadItLaterRequest {
 pub struct UpdateReadItLaterStatusRequest {
     pub read: bool,
 }
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct GeneralConfig {
+    pub fetch_since_hours: i32,
+    #[serde(default = "default_timeout")]
+    pub image_timeout_seconds: i32,
+}
+
+fn default_timeout() -> i32 {
+    45
+}

@@ -1,11 +1,13 @@
-use std::sync::Arc;
+use crate::models::{
+    AddReadItLaterRequest, AppState, ReadItLaterArticle, UpdateReadItLaterStatusRequest,
+};
+use crate::{db, email, processor, util};
+use axum::Json;
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
-use tracing::info;
-use axum::Json;
 use reqwest::Url;
-use crate::{db, email, processor, util};
-use crate::models::{AddReadItLaterRequest, AppState, ReadItLaterArticle, UpdateReadItLaterStatusRequest};
+use std::sync::Arc;
+use tracing::info;
 
 pub async fn list_read_it_later(
     State(state): State<Arc<AppState>>,
@@ -31,22 +33,19 @@ pub async fn add_read_it_later(
             "DB lock failed".to_string(),
         )
     })?;
-    let is_valid=is_valid_web_url(&payload.url);
+    let is_valid = is_valid_web_url(&payload.url);
     if is_valid {
         db::add_read_it_later_article(&db, &payload.url)
             .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
-    }
-    else{
-       return Ok(StatusCode::BAD_REQUEST)
+    } else {
+        return Ok(StatusCode::BAD_REQUEST);
     }
     Ok(StatusCode::CREATED)
 }
 
 fn is_valid_web_url(input: &str) -> bool {
     match Url::parse(input) {
-        Ok(parsed_url) => {
-            parsed_url.scheme() == "http" || parsed_url.scheme() == "https"
-        }
+        Ok(parsed_url) => parsed_url.scheme() == "http" || parsed_url.scheme() == "https",
         Err(_) => false,
     }
 }
@@ -109,7 +108,24 @@ pub async fn deliver_read_it_later(
     let db_clone = state.db.clone();
     tokio::spawn(async move {
         info!("Starting background Read It Later EPUB generation...");
-        match processor::generate_read_it_later_epub(articles, util::EPUB_OUTPUT_DIR).await {
+        let image_timeout = {
+            match db_clone.lock() {
+                Ok(conn) => match db::get_general_config(&conn) {
+                    Ok(cfg) => cfg.image_timeout_seconds,
+                    Err(e) => {
+                        tracing::error!("Failed to fetch config, using default timeout: {}", e);
+                        45
+                    }
+                },
+                Err(_) => {
+                    tracing::error!("Failed to lock DB for config, using default timeout");
+                    45
+                }
+            }
+        };
+        match processor::generate_read_it_later_epub(articles, util::EPUB_OUTPUT_DIR, image_timeout)
+            .await
+        {
             Ok(filename) => {
                 info!("Background generation completed successfully: {}", filename);
                 if !article_ids.is_empty() {
@@ -125,10 +141,10 @@ pub async fn deliver_read_it_later(
                     }
                 }
 
-               match  email::check_and_send_email(db_clone, &filename).await {
-                   Ok(_ok) => {}
-                   Err(_error) => {}
-               }
+                match email::check_and_send_email(db_clone, &filename).await {
+                    Ok(_ok) => {}
+                    Err(_error) => {}
+                }
             }
             Err(e) => {
                 tracing::error!("Failed to generate EPUB: {}", e);
