@@ -194,8 +194,54 @@ pub fn get_general_config(conn: &Connection) -> Result<GeneralConfig> {
 
 pub fn update_general_config(conn: &Connection, config: &GeneralConfig) -> Result<()> {
     conn.execute(
-        "UPDATE general_config SET fetch_since_hours = ?1, image_timeout_seconds = ?2 WHERE id = 1",
+        "INSERT OR REPLACE INTO general_config (id, fetch_since_hours, image_timeout_seconds) VALUES (1, ?1, ?2)",
         params![config.fetch_since_hours, config.image_timeout_seconds],
     )?;
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn setup_db(conn: &Connection) {
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS general_config (
+                id INTEGER PRIMARY KEY CHECK (id = 1),
+                fetch_since_hours INTEGER NOT NULL DEFAULT 24,
+                image_timeout_seconds INTEGER NOT NULL DEFAULT 45
+            )",
+            [],
+        ).unwrap();
+    }
+
+    #[test]
+    fn test_update_general_config() {
+        let conn = Connection::open_in_memory().unwrap();
+        setup_db(&conn);
+
+        // Initial config check
+        let new_config = GeneralConfig {
+            fetch_since_hours: 48,
+            image_timeout_seconds: 60,
+        };
+        
+        update_general_config(&conn, &new_config).unwrap();
+        
+        let fetched_config = get_general_config(&conn).unwrap();
+        assert_eq!(fetched_config.fetch_since_hours, 48);
+        assert_eq!(fetched_config.image_timeout_seconds, 60);
+
+        // Update again
+        let updated_config = GeneralConfig {
+            fetch_since_hours: 12,
+            image_timeout_seconds: 30,
+        };
+        update_general_config(&conn, &updated_config).unwrap();
+
+        let fetched_config_2 = get_general_config(&conn).unwrap();
+        assert_eq!(fetched_config_2.fetch_since_hours, 12);
+        assert_eq!(fetched_config_2.image_timeout_seconds, 30);
+    }
+}
+
