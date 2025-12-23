@@ -14,8 +14,9 @@ It also serves an OPDS feed, making it easy to download the generated EPUBs dire
 - [x] Add email send option for Kindle
 - [x] Add basic Read it later feature.
 - [ ] Make it multi-platform via Tauri or Dioxus
-- [ ] Add configuration for few of the hardcoded settings
-- [ ] Cleanup unused/unnecessary features 
+- [x] Add configuration for few of the hardcoded settings
+- [ ] Cleanup unused/unnecessary features
+- [ ] Add user defined custom article extraction logic via Scrapper crate
 
 ## Features
 
