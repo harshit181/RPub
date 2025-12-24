@@ -80,7 +80,7 @@ docker build -t rsspub .
 
 To run the container:
 ```bash
-docker run -p 3000:3000 -v $(pwd)/data:/app/data -v $(pwd)/static/epubs:/app/static/epubs rsspub
+docker run -p 3000:3000 -v $(pwd)/data:/app/db rsspub
 ```
 
 ### Usage
