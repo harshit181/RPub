@@ -111,7 +111,7 @@
 <div class="card">
     <div class="header">
         <h2>Read It Later</h2>
-        <button class="btn primary" on:click={deliverNow} disabled={delivering}>
+        <button class="add-btn-modern" on:click={deliverNow} disabled={delivering}>
             {delivering ? "Delivering..." : "Deliver it now"}
         </button>
     </div>
@@ -232,15 +232,7 @@
         border: none;
     }
 
-    .btn.primary {
-        background: var(--accent-blue);
-        color: white;
-    }
-
-    .btn.primary:hover {
-        background: var(--accent-blue-hover);
-    }
-
+    
     .btn.secondary {
         background: rgba(255, 255, 255, 0.1);
         color: var(--text-primary);

@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Caveat:wght@400;500;600;700&family=Patrick+Hand&display=swap');
+
 :root {
   --bg-color: #0d1117;
   --card-bg: #131722;
@@ -550,4 +552,333 @@ input:checked+.slider:before {
   .add-btn-modern {
     grid-column: auto;
   }
+}
+
+.theme-toggle {
+  background: transparent;
+  border: 1px solid var(--card-border);
+  border-radius: 8px;
+  padding: 8px 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  transition: all 0.2s;
+  margin-left: 1rem;
+}
+
+.theme-toggle:hover {
+  border-color: var(--accent-blue);
+  color: var(--text-primary);
+}
+
+.theme-toggle svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* Paper Sketch Theme Variables */
+body.sketch-theme {
+  --bg-color: #f5f3e8;
+  --card-bg: #fffef9;
+  --card-border: #2c2c2c;
+  --text-primary: #1a1a1a;
+  --text-secondary: #4a4a4a;
+  --accent-blue: #2563eb;
+  --accent-blue-hover: #1d4ed8;
+  --accent-green: #16a34a;
+  --accent-green-hover: #15803d;
+  --danger: #dc2626;
+  --input-bg: #fffef9;
+  --input-border: #2c2c2c;
+  --font-family: 'Caveat', 'Patrick Hand', cursive;
+}
+
+/* Paper texture background */
+body.sketch-theme {
+  background-image:
+    linear-gradient(90deg, transparent 79px, #e8e4d9 79px, #e8e4d9 81px, transparent 81px),
+    linear-gradient(#e8e4d9 1px, transparent 1px);
+  background-size: 100% 28px;
+  background-color: var(--bg-color);
+}
+
+/* Sketch font sizing adjustments */
+body.sketch-theme {
+  font-size: 1.1rem;
+}
+
+body.sketch-theme h1 {
+  font-family: 'Caveat', cursive;
+  font-size: 3rem;
+  background: none;
+  background-clip: text;
+  -webkit-background-clip: unset;
+  -webkit-text-fill-color: var(--text-primary);
+  text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.1);
+}
+
+body.sketch-theme h2 {
+  font-family: 'Caveat', cursive;
+  font-size: 1.6rem;
+}
+
+/* Sketchy card borders */
+body.sketch-theme .card {
+  background: var(--card-bg);
+  border: 2px solid var(--card-border);
+  border-radius: 3px;
+  box-shadow:
+    3px 3px 0 rgba(0, 0, 0, 0.15),
+    inset 0 0 30px rgba(200, 190, 170, 0.2);
+  position: relative;
+  transform: rotate(-0.3deg);
+}
+
+body.sketch-theme .card:nth-child(even) {
+  transform: rotate(0.3deg);
+}
+
+body.sketch-theme .card::before {
+  content: '';
+  position: absolute;
+  top: -3px;
+  left: -3px;
+  right: -3px;
+  bottom: -3px;
+  border: 1px dashed rgba(0, 0, 0, 0.2);
+  border-radius: 5px;
+  pointer-events: none;
+}
+
+/* Header sketch style */
+body.sketch-theme header {
+  background: var(--card-bg);
+  border: 2px solid var(--card-border);
+  border-radius: 3px;
+  backdrop-filter: none;
+  box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.15);
+  transform: rotate(0.2deg);
+}
+
+body.sketch-theme header::after {
+  content: '';
+  position: absolute;
+  bottom: 8px;
+  right: 10px;
+  width: 60px;
+  height: 20px;
+  background: repeating-linear-gradient(45deg,
+      transparent,
+      transparent 2px,
+      rgba(0, 0, 0, 0.05) 2px,
+      rgba(0, 0, 0, 0.05) 4px);
+}
+
+/* Sketchy inputs */
+body.sketch-theme input,
+body.sketch-theme select {
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid var(--card-border);
+  border-radius: 0;
+  font-family: 'Patrick Hand', cursive;
+  font-size: 1.1rem;
+  padding: 0.5rem 0.25rem;
+}
+
+body.sketch-theme input:focus,
+body.sketch-theme select:focus {
+  background: rgba(255, 255, 200, 0.3);
+  border-bottom-color: var(--accent-blue);
+  border-bottom-style: dashed;
+}
+
+body.sketch-theme input::placeholder {
+  color: #888;
+  font-style: italic;
+}
+
+/* Sketchy buttons */
+body.sketch-theme button {
+  font-family: 'Caveat', cursive;
+  font-size: 1.2rem;
+  font-weight: 600;
+}
+
+body.sketch-theme .add-btn,
+body.sketch-theme .add-btn-modern {
+  background: #fef3c7;
+  color: var(--text-primary);
+  border: 2px solid var(--card-border);
+  border-radius: 3px;
+  box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.2);
+  transition: all 0.15s;
+}
+
+body.sketch-theme .add-btn:hover,
+body.sketch-theme .add-btn-modern:hover {
+  background: #fde68a;
+  transform: translate(-1px, -1px);
+  box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.25);
+}
+
+body.sketch-theme #generate-btn {
+  background: linear-gradient(135deg, #fef3c7, #fde68a);
+  color: var(--text-primary);
+  border: 3px solid var(--card-border);
+  border-radius: 5px;
+  box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.2);
+  position: relative;
+  overflow: hidden;
+}
+
+body.sketch-theme #generate-btn::before {
+  content: '✏️';
+  position: absolute;
+  left: 1rem;
+  font-size: 1.5rem;
+}
+
+body.sketch-theme #generate-btn:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 6px 6px 0 rgba(0, 0, 0, 0.25);
+}
+
+body.sketch-theme .delete-btn {
+  border: 1px solid transparent;
+}
+
+body.sketch-theme .delete-btn:hover {
+  background: #fecaca;
+  border: 1px dashed var(--danger);
+}
+
+/* Sketchy list items */
+body.sketch-theme .item-list li {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-left: 3px solid var(--card-border);
+  border-radius: 2px;
+  box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.1);
+  position: relative;
+}
+
+body.sketch-theme .item-list li::before {
+  content: '•';
+  position: absolute;
+  left: -12px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 1.5rem;
+  color: var(--card-border);
+}
+
+body.sketch-theme .item-list li:hover {
+  border-color: var(--accent-blue);
+  transform: translateX(2px);
+}
+
+/* Tabs sketch style */
+body.sketch-theme .tabs {
+  border-bottom: 2px solid var(--card-border);
+}
+
+body.sketch-theme .tab-btn {
+  font-family: 'Caveat', cursive;
+  font-size: 1.3rem;
+  border-radius: 0;
+  position: relative;
+}
+
+body.sketch-theme .tab-btn.active {
+  background: var(--card-bg);
+  border: 2px solid var(--card-border);
+  border-bottom: 2px solid var(--card-bg);
+  margin-bottom: -2px;
+  color: var(--text-primary);
+}
+
+body.sketch-theme .tab-btn.active::before {
+  content: '📌';
+  position: absolute;
+  top: -8px;
+  right: 5px;
+  font-size: 0.9rem;
+}
+
+/* Popup sketch style */
+body.sketch-theme .popup-box {
+  background: var(--card-bg);
+  border: 3px solid var(--card-border);
+  border-radius: 5px;
+  box-shadow: 6px 6px 0 rgba(0, 0, 0, 0.2);
+  transform: rotate(-0.5deg);
+}
+
+body.sketch-theme .popup-btn {
+  background: #fef3c7;
+  color: var(--text-primary);
+  border: 2px solid var(--card-border);
+}
+
+body.sketch-theme .popup-btn.error {
+  background: #fecaca;
+}
+
+/* Login overlay sketch */
+body.sketch-theme #login-overlay {
+  background: rgba(245, 243, 232, 0.95);
+}
+
+/* Toggle switch sketch style */
+body.sketch-theme .slider {
+  background-color: #e5e7eb;
+  border: 2px solid var(--card-border);
+}
+
+body.sketch-theme input:checked+.slider {
+  background-color: #bfdbfe;
+}
+
+/* Downloads list sketch */
+body.sketch-theme #downloads-list li {
+  background: var(--card-bg);
+  border-left: 4px solid var(--accent-blue);
+}
+
+/* Cover wrapper sketch */
+body.sketch-theme .current-cover {
+  border: 3px solid var(--card-border);
+  border-radius: 3px;
+  box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.15);
+  background: #e5e7eb;
+}
+
+/* Schedule type badge sketch */
+body.sketch-theme .schedule-type-badge {
+  background: #fef3c7;
+  border: 1px solid var(--card-border);
+  color: var(--text-primary);
+}
+
+/* Scribble decorations */
+body.sketch-theme .card-header::after {
+  content: '';
+  flex-grow: 1;
+  height: 2px;
+  margin-left: 10px;
+  background: repeating-linear-gradient(90deg,
+      var(--card-border),
+      var(--card-border) 4px,
+      transparent 4px,
+      transparent 8px);
+}
+
+/* File input sketch */
+body.sketch-theme .file-input-wrapper {
+  background: transparent;
+  border: 2px dashed var(--card-border);
 }
