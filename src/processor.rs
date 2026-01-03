@@ -1,5 +1,5 @@
 use crate::models::{Feed, ReadItLaterArticle};
-use crate::{epub_gen, feed, util};
+use crate::{epub_gen, feed};
 use anyhow::Result;
 use chrono::{DateTime, Duration as ChronoDuration, Utc};
 use reqwest::Client;
@@ -9,6 +9,7 @@ use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use tracing::{info, warn};
 use crate::feed::Article;
+use crate::util::content_extractors;
 
 pub async fn generate_epub(
     feeds: Vec<Feed>,
@@ -117,7 +118,7 @@ pub async fn generate_read_it_later_epub(
 async fn fetch_all_article_with_content(articles: Vec<ReadItLaterArticle>, client: &Client, fetched_articles: &mut Vec<Article>) {
     for article in articles {
         info!("Fetching: {}", article.url);
-        match util::fetch_full_content(&client, &article.url).await {
+        match content_extractors::fetch_full_content(&client, &article.url).await {
             Ok((title, content)) => {
                 fetched_articles.push(crate::feed::Article {
                     title,

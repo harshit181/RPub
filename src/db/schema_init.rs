@@ -72,5 +72,15 @@ pub fn init_db(path: &str) -> rusqlite::Result<Connection> {
         )",
         [],
     )?;
+
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS feed_processor (
+            feed_id INTEGER PRIMARY KEY,
+            processor INTEGER NOT NULL DEFAULT 1 CHECK (processor IN (1, 2, 3)),
+            custom_config TEXT,
+            FOREIGN KEY (feed_id) REFERENCES feeds(id) ON DELETE CASCADE
+        )",
+        [],
+    )?;
     Ok(conn)
 }

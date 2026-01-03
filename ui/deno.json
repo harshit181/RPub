@@ -12,7 +12,9 @@
         "@tsconfig/svelte": "npm:@tsconfig/svelte@^5.0.6",
         "@types/node": "npm:@types/node@^24.10.1",
         "svelte-check": "npm:svelte-check@^4.3.4",
-        "typescript": "npm:typescript@~5.9.3"
+        "typescript": "npm:typescript@~5.9.3",
+        "js-yaml": "npm:js-yaml@^4.1.0",
+        "@types/js-yaml": "npm:@types/js-yaml@^4.0.9"
     },
     "compilerOptions": {
         "lib": [

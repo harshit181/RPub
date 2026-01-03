@@ -2,8 +2,9 @@ use std::sync::Arc;
 use axum::extract::{Multipart, Path, State};
 use axum::http::StatusCode;
 use axum::Json;
+use serde::Deserialize;
 use crate::db;
-use crate::models::{AddFeedRequest, AppState, Feed};
+use crate::models::{AddFeedRequest, AppState, Feed, FeedProcessor, ProcessorType};
 
 pub async fn list_feeds(
     State(state): State<Arc<AppState>>,
@@ -29,13 +30,21 @@ pub async fn add_feed(
             "DB lock failed".to_string(),
         )
     })?;
-    db::add_feed(
+
+    let feed_id=db::add_feed(
         &db,
         &payload.url,
         payload.name.as_deref(),
         payload.concurrency_limit,
     )
     .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    
+    if let Some(processor) = payload.processor {
+        if processor != ProcessorType::Default {
+        let _ = db::save_feed_processor(&db,feed_id,processor,payload.custom_config.as_deref(),);
+        }
+    }
+    
     Ok(StatusCode::CREATED)
 }
 
@@ -51,6 +60,50 @@ pub async fn delete_feed(
     })?;
     db::delete_feed(&db, id).map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
     Ok(StatusCode::NO_CONTENT)
+}
+
+pub async fn get_feed_processor(
+    State(state): State<Arc<AppState>>,
+    Path(id): Path<i64>,
+) -> Result<Json<Option<FeedProcessor>>, (StatusCode, String)> {
+    let db = state.db.lock().map_err(|_| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "DB lock failed".to_string(),
+        )
+    })?;
+    let processor = db::get_feed_processor(&db, id)
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    Ok(Json(processor))
+}
+
+#[derive(Deserialize)]
+pub struct UpdateFeedProcessorRequest {
+    pub processor: ProcessorType,
+    pub custom_config: Option<String>,
+}
+
+pub async fn update_feed_processor(
+    State(state): State<Arc<AppState>>,
+    Path(id): Path<i64>,
+    Json(payload): Json<UpdateFeedProcessorRequest>,
+) -> Result<StatusCode, (StatusCode, String)> {
+    let db = state.db.lock().map_err(|_| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "DB lock failed".to_string(),
+        )
+    })?;
+    
+    if payload.processor == ProcessorType::Default {
+        db::delete_feed_processor(&db, id)
+            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    } else {
+        db::save_feed_processor(&db, id, payload.processor, payload.custom_config.as_deref())
+            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    }
+    
+    Ok(StatusCode::OK)
 }
 
 pub async fn import_opml(

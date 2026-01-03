@@ -10,6 +10,7 @@ pub struct Feed {
     pub name: Option<String>,
     #[serde(default)]
     pub concurrency_limit: usize,
+    pub feed_processor: FeedProcessor,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -53,6 +54,9 @@ pub struct AddFeedRequest {
     pub name: Option<String>,
     #[serde(default)]
     pub concurrency_limit: usize,
+    #[serde(default)]
+    pub processor: Option<ProcessorType>,
+    pub custom_config: Option<String>,
 }
 
 #[derive(Serialize)]
@@ -107,4 +111,53 @@ pub struct GeneralConfig {
 
 fn default_timeout() -> i32 {
     45
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum ProcessorType {
+    Default = 1,
+    DomSmoothie = 2,
+    Custom = 3,
+}
+
+impl Default for ProcessorType {
+    fn default() -> Self {
+        ProcessorType::Default
+    }
+}
+
+impl ProcessorType {
+    pub fn from_i32(value: i32) -> Self {
+        match value {
+            2 => ProcessorType::DomSmoothie,
+            3 => ProcessorType::Custom,
+            _ => ProcessorType::Default,
+        }
+    }
+    
+    pub fn to_i32(self) -> i32 {
+        self as i32
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct FeedProcessor {
+    pub feed_id: i64,
+    pub processor: ProcessorType,
+    pub custom_config: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct CustomExtractorConfig {
+    #[serde(default)]
+    pub selector: Vec<String>,
+    #[serde(default)]
+    pub discard: Vec<String>,
+    #[serde(default = "default_output_mode")]
+    pub output_mode: String,
+}
+
+fn default_output_mode() -> String {
+    "html".to_string()
 }

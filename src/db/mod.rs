@@ -1,7 +1,7 @@
 use chrono::Utc;
 use rusqlite::{params, Connection, Result};
 
-use crate::models::{EmailConfig, Feed, GeneralConfig, ReadItLaterArticle, Schedule};
+use crate::models::{EmailConfig, Feed, FeedProcessor, GeneralConfig, ProcessorType, ReadItLaterArticle, Schedule};
 
 pub mod schema_init;
 
@@ -10,22 +10,39 @@ pub fn add_feed(
     url: &str,
     name: Option<&str>,
     concurrency_limit: usize,
-) -> Result<()> {
+) -> Result<i64> {
     conn.execute(
         "INSERT OR IGNORE INTO feeds (url, name, concurrency_limit, created_at) VALUES (?1, ?2, ?3, ?4)",
         params![url, name, concurrency_limit, Utc::now().to_rfc3339()],
     )?;
-    Ok(())
+    let x= conn.last_insert_rowid();
+    Ok(x)
 }
 
 pub fn get_feeds(conn: &Connection) -> Result<Vec<Feed>> {
-    let mut stmt = conn.prepare("SELECT id, url, name, concurrency_limit FROM feeds")?;
+    let mut stmt = conn.prepare(
+        "SELECT f.id, f.url, f.name, f.concurrency_limit, fp.processor, fp.custom_config
+         FROM feeds f
+         LEFT JOIN feed_processor fp ON f.id = fp.feed_id"
+    )?;
     let feed_iter = stmt.query_map([], |row| {
+        let feed_id: i64 = row.get(0)?;
+        let processor_int: Option<i32> = row.get(4)?;
+        let processor = processor_int
+            .map(ProcessorType::from_i32)
+            .unwrap_or(ProcessorType::Default);
+        let custom_config: Option<String> = row.get(5)?;
+        
         Ok(Feed {
-            id: Some(row.get(0)?),
+            id: Some(feed_id),
             url: row.get(1)?,
             name: row.get(2)?,
-            concurrency_limit: row.get(3)? ,
+            concurrency_limit: row.get(3)?,
+            feed_processor: FeedProcessor {
+                feed_id,
+                processor,
+                custom_config,
+            },
         })
     })?;
 
@@ -197,6 +214,44 @@ pub fn update_general_config(conn: &Connection, config: &GeneralConfig) -> Resul
         "INSERT OR REPLACE INTO general_config (id, fetch_since_hours, image_timeout_seconds) VALUES (1, ?1, ?2)",
         params![config.fetch_since_hours, config.image_timeout_seconds],
     )?;
+    Ok(())
+}
+
+pub fn get_feed_processor(conn: &Connection, feed_id: i64) -> Result<Option<FeedProcessor>> {
+    let mut stmt = conn.prepare(
+        "SELECT feed_id, processor, custom_config FROM feed_processor WHERE feed_id = ?1",
+    )?;
+    let mut iter = stmt.query_map(params![feed_id], |row| {
+        let processor_int: i32 = row.get(1)?;
+        Ok(FeedProcessor {
+            feed_id: row.get(0)?,
+            processor: ProcessorType::from_i32(processor_int),
+            custom_config: row.get(2)?,
+        })
+    })?;
+
+    if let Some(result) = iter.next() {
+        Ok(Some(result?))
+    } else {
+        Ok(None)
+    }
+}
+
+pub fn save_feed_processor(
+    conn: &Connection,
+    feed_id: i64,
+    processor: ProcessorType,
+    custom_config: Option<&str>,
+) -> Result<()> {
+    conn.execute(
+        "INSERT OR REPLACE INTO feed_processor (feed_id, processor, custom_config) VALUES (?1, ?2, ?3)",
+        params![feed_id, processor.to_i32(), custom_config],
+    )?;
+    Ok(())
+}
+
+pub fn delete_feed_processor(conn: &Connection, feed_id: i64) -> Result<()> {
+    conn.execute("DELETE FROM feed_processor WHERE feed_id = ?1", params![feed_id])?;
     Ok(())
 }
 

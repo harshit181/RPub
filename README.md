@@ -14,9 +14,11 @@ It also serves an OPDS feed, making it easy to download the generated EPUBs dire
 - [x] Add email send option for Kindle
 - [x] Add basic Read it later feature.
 - [ ] Make it multi-platform via Tauri or Dioxus
+- [x] Add user defined custom article extraction logic via <s>Scrapper</s> dom_query crate
+    - [ ] add deduplication logic for Custom Extractor
 - [x] Add configuration for few of the hardcoded settings
 - [ ] Cleanup unused/unnecessary features
-- [ ] Add user defined custom article extraction logic via Scrapper crate
+
 
 ## Features
 
@@ -144,8 +146,40 @@ You can easily add articles from your Android phone using the [HTTP Shortcuts](h
 
 **Added sample rsspub_http_shortcuts.json which can be imported in the app**.   
 
-
 **IOS Integration (Inbuild Shortcut):**
+
+### Content Extraction
+
+rsspub supports three content extraction methods for fetching full article content. You can configure the extractor per feed in the UI.
+
+| Extractor | Description                                                                                                                                                              |
+|-----------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Default** | Uses [`dom_smoothie`](https://github.com/niklak/dom_smoothie) crate with Readability algorithm. Best for most websites. Automatically extracts the main article content. |
+| **DomSmoothie** | Uses [`dom_smoothie`](https://github.com/niklak/dom_smoothie) crate's native extraction logic. Alternative to Readability that may work better for certain sites.                                                  |
+| **Custom (Experimental)** | CSS selector-based extraction. Allows you to define custom selectors to extract content and discard unwanted elements.                                                   |
+
+#### Custom Extractor Configuration
+
+For sites where automatic extraction doesn't work well, you can define custom CSS selectors using YAML format:
+
+```yaml
+selector:
+  - '.article-content'
+  - '.post-body'
+  - 'article'
+discard:
+  - '.ads'
+  - '.sidebar'
+  - '.comments'
+  - '.social-share'
+output_mode: html
+```
+
+**Fields:**
+- `selector` (required): Array of CSS selectors to extract content from. The extractor will use the first matching selector.
+- `discard` (optional): Array of CSS selectors for elements to remove from the extracted content.
+- `output_mode` (optional): Output format - `html` (default) or `text`.   
+
      <s>
     
 ### Building with Optimization (Optional) 

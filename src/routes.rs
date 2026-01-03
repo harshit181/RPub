@@ -19,6 +19,7 @@ pub fn create_router(state: Arc<AppState>) -> Router {
         .route("/feeds", get(feed_handler::list_feeds).post(feed_handler::add_feed))
         .route("/feeds/import", post(feed_handler::import_opml))
         .route("/feeds/{id}", delete(feed_handler::delete_feed))
+        .route("/feeds/{id}/processor", get(feed_handler::get_feed_processor).put(feed_handler::update_feed_processor))
         .route(
             "/schedules",
             get(schedule_handler::list_schedules).post(schedule_handler::add_schedule),

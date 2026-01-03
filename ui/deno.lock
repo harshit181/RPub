@@ -3,7 +3,9 @@
   "specifiers": {
     "npm:@sveltejs/vite-plugin-svelte@^6.2.1": "6.2.1_svelte@5.46.0__acorn@8.15.0_vite@7.3.0__@types+node@24.10.4__picomatch@4.0.3_@types+node@24.10.4",
     "npm:@tsconfig/svelte@^5.0.6": "5.0.6",
+    "npm:@types/js-yaml@^4.0.9": "4.0.9",
     "npm:@types/node@^24.10.1": "24.10.4",
+    "npm:js-yaml@^4.1.0": "4.1.1",
     "npm:svelte-check@*": "4.3.4_svelte@5.46.0__acorn@8.15.0_typescript@5.9.3",
     "npm:svelte-check@^4.3.4": "4.3.4_svelte@5.46.0__acorn@8.15.0_typescript@5.9.3",
     "npm:svelte@^5.43.8": "5.46.0_acorn@8.15.0",
@@ -313,6 +315,9 @@
     "@types/estree@1.0.8": {
       "integrity": "sha512-dWHzHa2WqEXI/O1E9OjrocMTKJl2mSrEolh1Iomrv6U+JuNwaHXsXx9bLu5gG7BUWFIN0skIQJQ/L1rIex4X6w=="
     },
+    "@types/js-yaml@4.0.9": {
+      "integrity": "sha512-k4MGaQl5TGo/iipqb2UDG2UwjXziSWkh0uysQelTlJpX1qGlpUZYm8PnO4DxG1qBomtJUdYJ6qR6xdIah10JLg=="
+    },
     "@types/node@24.10.4": {
       "integrity": "sha512-vnDVpYPMzs4wunl27jHrfmwojOGKya0xyM3sH+UE5iv5uPS6vX7UIoh6m+vQc5LGBq52HBKPIn/zcSZVzeDEZg==",
       "dependencies": [
@@ -322,6 +327,9 @@
     "acorn@8.15.0": {
       "integrity": "sha512-NZyJarBfL7nWwIq+FDL6Zp/yHEhePMNnnJ0y3qfieCrmNvYct8uvtiV41UvlSe6apAfk0fY1FbWx+NwfmpvtTg==",
       "bin": true
+    },
+    "argparse@2.0.1": {
+      "integrity": "sha512-8+9WqebbFzpX9OR+Wa6O29asIogeRMzcGtAINdpMHHyAg10f05aSFVBbcEqGf/PXw1EjAZ+q2/bEBg3DvurK3Q=="
     },
     "aria-query@5.3.2": {
       "integrity": "sha512-COROpnaoap1E2F000S62r6A60uHZnmlvomhfyT2DlTcrY1OrBKn2UhH7qn5wTC9zMvD0AY7csdPSNwKP+7WiQw=="
@@ -411,6 +419,13 @@
       "dependencies": [
         "@types/estree"
       ]
+    },
+    "js-yaml@4.1.1": {
+      "integrity": "sha512-qQKT4zQxXl8lLwBtHMWwaTcGfFOZviOJet3Oy/xmGk2gZH677CJM9EvtfdSkgWcATZhj/55JZ0rmy3myCT5lsA==",
+      "dependencies": [
+        "argparse"
+      ],
+      "bin": true
     },
     "locate-character@3.0.0": {
       "integrity": "sha512-SW13ws7BjaeJ6p7Q6CO2nchbYEc3X3J6WrmTTDto7yMPqVSZTUyY5Tjbid+Ab8gLnATtygYtiDIJGQRRn2ZOiA=="
@@ -572,7 +587,9 @@
     "dependencies": [
       "npm:@sveltejs/vite-plugin-svelte@^6.2.1",
       "npm:@tsconfig/svelte@^5.0.6",
+      "npm:@types/js-yaml@^4.0.9",
       "npm:@types/node@^24.10.1",
+      "npm:js-yaml@^4.1.0",
       "npm:svelte-check@^4.3.4",
       "npm:svelte@^5.43.8",
       "npm:typescript@~5.9.3",

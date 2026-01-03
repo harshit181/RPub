@@ -6,7 +6,8 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::Semaphore;
 use tracing::{error, info, warn};
-use crate::util;
+use crate::models::FeedProcessor;
+use crate::util::content_extractors;
 
 #[derive(Debug, Clone)]
 pub struct Article {
@@ -20,6 +21,7 @@ pub struct Article {
 pub struct FeedWrapper {
     pub feed: Feed,
     pub limit: usize,
+    pub processor: Option<FeedProcessor>,
 }
 
 pub async fn fetch_feeds(
@@ -34,11 +36,11 @@ pub async fn fetch_feeds(
 
     let mut feeds = Vec::new();
     let mut errors = Vec::new();
-    let urls = db_feeds
+    let feed_info: Vec<(String, usize, Option<FeedProcessor>)> = db_feeds
         .into_iter()
-        .map(|f| (f.url.clone(), f.concurrency_limit))
-        .collect::<Vec<(String, usize)>>();
-    for (string_url, limit) in urls {
+        .map(|f| (f.url.clone(), f.concurrency_limit, Some(f.feed_processor.clone())))
+        .collect();
+    for (string_url, limit, processor) in feed_info {
         let url: &str = &string_url;
         match client.get(url).send().await {
             Ok(resp) => {
@@ -56,6 +58,7 @@ pub async fn fetch_feeds(
                             feeds.push(FeedWrapper {
                                 feed,
                                 limit,
+                                processor,
                             });
                         }
                         Err(e) => {
@@ -108,6 +111,7 @@ pub async fn filter_items(
     for feed_wrapper in feeds {
         let feed = feed_wrapper.feed;
         let limit = feed_wrapper.limit;
+        let processor = feed_wrapper.processor;
         let semaphore = if limit > 0 {
             Some(Arc::new(Semaphore::new(limit)))
         } else {
@@ -137,6 +141,7 @@ pub async fn filter_items(
                     let source_title = source_title.clone();
                     let entry = entry.clone();
                     let semaphore = semaphore.clone();
+                    let processor = processor.clone();
 
                     join_set.spawn(async move {
                         let _permit = if let Some(sem) = semaphore {
@@ -148,7 +153,7 @@ pub async fn filter_items(
 
 
                         let content = if !link.is_empty() {
-                            match util::fetch_full_content(&client, &link).await {
+                            match content_extractors::fetch_full_content_with_processor(&client, &link, processor.as_ref()).await {
                                 //should use extracted title ?
                                 Ok((_title, c)) => c,
                                 Err(e) => {
