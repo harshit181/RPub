@@ -10,13 +10,14 @@
     import EmailConfigSection from "./components/EmailConfigSection.svelte";
     import GeneralConfigSection from "./components/GeneralConfigSection.svelte";
     import ReadItLaterSection from "./components/ReadItLaterSection.svelte";
+    import DomainOverrideSection from "./components/DomainOverrideSection.svelte";
     import Tabs from "./components/Tabs.svelte";
     import { onMount } from "svelte";
     import { api } from "./lib/api";
     import { isAuthenticated, authHeader, isLoginVisible } from "./lib/store";
 
     let activeTab = "Dashboard";
-    const tabs = ["Dashboard", "Configuration", "Read It Later"];
+    const tabs = ["Dashboard", "Configuration", "Read It Later", "Domain Override"];
 
     onMount(async () => {
         window.addEventListener("unauthorized", () => {
@@ -73,6 +74,12 @@
             <main class="dashboard-grid">
                 <div class="column left-col">
                     <ReadItLaterSection />
+                </div>
+            </main>
+        {:else if activeTab === "Domain Override"}
+            <main class="dashboard-grid">
+                <div class="column left-col">
+                    <DomainOverrideSection />
                 </div>
             </main>
         {/if}

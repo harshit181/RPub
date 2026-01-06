@@ -1,7 +1,7 @@
 use chrono::Utc;
 use rusqlite::{params, Connection, Result};
 
-use crate::models::{EmailConfig, Feed, FeedProcessor, GeneralConfig, ProcessorType, ReadItLaterArticle, Schedule};
+use crate::models::{DomainOverride, EmailConfig, Feed, ContentProcessor, GeneralConfig, ProcessorType, ReadItLaterArticle, Schedule};
 
 pub mod schema_init;
 
@@ -38,8 +38,8 @@ pub fn get_feeds(conn: &Connection) -> Result<Vec<Feed>> {
             url: row.get(1)?,
             name: row.get(2)?,
             concurrency_limit: row.get(3)?,
-            feed_processor: FeedProcessor {
-                feed_id,
+            feed_processor: ContentProcessor {
+                id: Some(feed_id),
                 processor,
                 custom_config,
             },
@@ -217,14 +217,14 @@ pub fn update_general_config(conn: &Connection, config: &GeneralConfig) -> Resul
     Ok(())
 }
 
-pub fn get_feed_processor(conn: &Connection, feed_id: i64) -> Result<Option<FeedProcessor>> {
+pub fn get_feed_processor(conn: &Connection, feed_id: i64) -> Result<Option<ContentProcessor>> {
     let mut stmt = conn.prepare(
         "SELECT feed_id, processor, custom_config FROM feed_processor WHERE feed_id = ?1",
     )?;
     let mut iter = stmt.query_map(params![feed_id], |row| {
         let processor_int: i32 = row.get(1)?;
-        Ok(FeedProcessor {
-            feed_id: row.get(0)?,
+        Ok(ContentProcessor {
+            id: Some(row.get(0)?),
             processor: ProcessorType::from_i32(processor_int),
             custom_config: row.get(2)?,
         })
@@ -252,6 +252,44 @@ pub fn save_feed_processor(
 
 pub fn delete_feed_processor(conn: &Connection, feed_id: i64) -> Result<()> {
     conn.execute("DELETE FROM feed_processor WHERE feed_id = ?1", params![feed_id])?;
+    Ok(())
+}
+
+pub fn add_domain_override(
+    conn: &Connection,
+    domain: &str,
+    processor: ProcessorType,
+    custom_config: Option<&str>,
+) -> Result<i64> {
+    conn.execute(
+        "INSERT OR REPLACE INTO domain_override (domain, processor, custom_config, created_at) VALUES (?1, ?2, ?3, ?4)",
+        params![domain.to_lowercase(), processor.to_i32(), custom_config, Utc::now().to_rfc3339()],
+    )?;
+    Ok(conn.last_insert_rowid())
+}
+
+pub fn get_domain_overrides(conn: &Connection) -> Result<Vec<DomainOverride>> {
+    let mut stmt = conn.prepare("SELECT id, domain, processor, custom_config, created_at FROM domain_override ORDER BY created_at DESC")?;
+    let iter = stmt.query_map([], |row| {
+        let processor_int: i32 = row.get(2)?;
+        Ok(DomainOverride {
+            id: Some(row.get(0)?),
+            domain: row.get(1)?,
+            processor: ProcessorType::from_i32(processor_int),
+            custom_config: row.get(3)?,
+            created_at: row.get(4)?,
+        })
+    })?;
+
+    let mut overrides = Vec::new();
+    for item in iter {
+        overrides.push(item?);
+    }
+    Ok(overrides)
+}
+
+pub fn delete_domain_override(conn: &Connection, id: i64) -> Result<()> {
+    conn.execute("DELETE FROM domain_override WHERE id = ?1", params![id])?;
     Ok(())
 }
 

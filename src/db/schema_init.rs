@@ -83,7 +83,7 @@ pub fn init_db(path: &str) -> rusqlite::Result<Connection> {
         [],
     )?;
 
-    // Migration: Remove CHECK constraint from feed_processor if it exists
+    // Migration: in case sqllite db has check constraint from previous version (will delete this in future)
     let has_check_constraint: bool = conn
         .query_row(
             "SELECT sql FROM sqlite_master WHERE type='table' AND name='feed_processor'",
@@ -108,6 +108,17 @@ pub fn init_db(path: &str) -> rusqlite::Result<Connection> {
             ALTER TABLE feed_processor_new RENAME TO feed_processor;",
         )?;
     }
+
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS domain_override (
+            id INTEGER PRIMARY KEY,
+            domain TEXT NOT NULL UNIQUE,
+            processor INTEGER NOT NULL,
+            custom_config TEXT,
+            created_at TEXT NOT NULL
+        )",
+        [],
+    )?;
 
     Ok(conn)
 }

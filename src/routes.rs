@@ -9,7 +9,7 @@ use std::sync::Arc;
 use tower::ServiceBuilder;
 use tower_http::{services::ServeDir, set_header::SetResponseHeaderLayer};
 use tracing::{info, warn};
-use crate::handlers::{auth_handler, config_handler, download_handler, email_handler, feed_handler, read_it_later_handler, schedule_handler};
+use crate::handlers::{auth_handler, config_handler, domain_override_handler, download_handler, email_handler, feed_handler, read_it_later_handler, schedule_handler};
 
 pub fn create_router(state: Arc<AppState>) -> Router {
     let public_routes = Router::new().route("/opds", get(handlers::opds_handler));
@@ -44,6 +44,11 @@ pub fn create_router(state: Arc<AppState>) -> Router {
             delete(read_it_later_handler::delete_read_it_later).patch(read_it_later_handler::update_read_it_later_status),
         )
         .route("/read-it-later/deliver", post(read_it_later_handler::deliver_read_it_later))
+        .route(
+            "/domain-overrides",
+            get(domain_override_handler::list_domain_overrides).post(domain_override_handler::add_domain_override),
+        )
+        .route("/domain-overrides/{id}", delete(domain_override_handler::delete_domain_override))
         .route("/auth/check", get(|| async { StatusCode::OK }));
 
     let protected_routes =

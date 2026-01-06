@@ -6,7 +6,7 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::Semaphore;
 use tracing::{error, info, warn};
-use crate::models::FeedProcessor;
+use crate::models::ContentProcessor;
 use crate::util::content_extractors;
 
 #[derive(Debug, Clone)]
@@ -21,7 +21,7 @@ pub struct Article {
 pub struct FeedWrapper {
     pub feed: Feed,
     pub limit: usize,
-    pub processor: Option<FeedProcessor>,
+    pub processor: Option<ContentProcessor>,
 }
 
 pub async fn fetch_feeds(
@@ -36,7 +36,7 @@ pub async fn fetch_feeds(
 
     let mut feeds = Vec::new();
     let mut errors = Vec::new();
-    let feed_info: Vec<(String, usize, Option<FeedProcessor>)> = db_feeds
+    let feed_info: Vec<(String, usize, Option<ContentProcessor>)> = db_feeds
         .into_iter()
         .map(|f| (f.url.clone(), f.concurrency_limit, Some(f.feed_processor.clone())))
         .collect();

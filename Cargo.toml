@@ -34,6 +34,8 @@ tikv-jemallocator = {version ="0.6.1",optional = true,features = ["unprefixed_ma
 tikv-jemalloc-ctl = {version ="0.6.1",optional = true }
 dom_query = "0.24"
 serde_yaml = "0.9"
+url = "2.5.8"
+arc-swap = "1.8.0"
 
 [features]
 default = []

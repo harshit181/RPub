@@ -1054,6 +1054,23 @@ textarea.invalid {
 }
 
 /* -----------------------------------------------------------------------------
+   Common Section Styles
+   ----------------------------------------------------------------------------- */
+
+.section-description {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  margin-bottom: 1rem;
+}
+
+.empty-state {
+  color: var(--text-secondary);
+  font-style: italic;
+  text-align: center;
+  padding: 1rem;
+}
+
+/* -----------------------------------------------------------------------------
    Form Styles (SchedulesSection)
    ----------------------------------------------------------------------------- */
 

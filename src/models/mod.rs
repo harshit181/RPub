@@ -10,7 +10,7 @@ pub struct Feed {
     pub name: Option<String>,
     #[serde(default)]
     pub concurrency_limit: usize,
-    pub feed_processor: FeedProcessor,
+    pub feed_processor: ContentProcessor,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -144,8 +144,8 @@ impl ProcessorType {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct FeedProcessor {
-    pub feed_id: i64,
+pub struct ContentProcessor {
+    pub id: Option<i64>,
     pub processor: ProcessorType,
     pub custom_config: Option<String>,
 }
@@ -171,4 +171,20 @@ pub struct CustomExtractorConfig {
     pub discard: Vec<String>,
     #[serde(default)]
     pub output_mode: OutputMode,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct DomainOverride {
+    pub id: Option<i64>,
+    pub domain: String,
+    pub processor: ProcessorType,
+    pub custom_config: Option<String>,
+    pub created_at: String,
+}
+
+#[derive(Deserialize)]
+pub struct AddDomainOverrideRequest {
+    pub domain: String,
+    pub processor: ProcessorType,
+    pub custom_config: Option<String>,
 }

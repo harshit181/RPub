@@ -90,6 +90,8 @@ async fn run_read_it_later_generation(db: Arc<Mutex<Connection>>) -> Result<()> 
          let conn = db.lock().map_err(|_| anyhow::anyhow!("DB lock failed"))?;
          let articles = db::get_read_it_later_articles(&conn, true)?;
          let config = db::get_general_config(&conn)?;
+
+         
          (articles, config.image_timeout_seconds)
     };
 
