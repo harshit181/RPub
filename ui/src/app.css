@@ -882,3 +882,428 @@ body.sketch-theme .file-input-wrapper {
   background: transparent;
   border: 2px dashed var(--card-border);
 }
+
+/* =============================================================================
+   CONSOLIDATED COMPONENT STYLES
+   ============================================================================= */
+
+/* -----------------------------------------------------------------------------
+   Modal Styles (FeedsSection)
+   ----------------------------------------------------------------------------- */
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(5px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.modal-box {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 16px;
+  padding: 1.5rem;
+  max-width: 500px;
+  width: 90%;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+}
+
+.modal-box h3 {
+  margin: 0 0 1rem 0;
+  color: var(--text-primary);
+  font-size: 1.1rem;
+}
+
+.modal-field {
+  margin-bottom: 1rem;
+}
+
+.modal-field label {
+  display: block;
+  margin-bottom: 0.5rem;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
+.modal-field select,
+.modal-field textarea {
+  width: 100%;
+  background: var(--input-bg);
+  border: 1px solid var(--input-border);
+  color: var(--text-primary);
+  padding: 0.75rem;
+  border-radius: 8px;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-top: 1.5rem;
+}
+
+/* -----------------------------------------------------------------------------
+   Button Variants
+   ----------------------------------------------------------------------------- */
+
+.edit-btn {
+  background: transparent;
+  color: var(--text-secondary);
+  border: none;
+  padding: 4px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1rem;
+}
+
+.edit-btn:hover {
+  background: rgba(59, 130, 246, 0.1);
+  color: var(--accent-blue);
+}
+
+.cancel-btn {
+  background: transparent;
+  border: 1px solid var(--card-border);
+  color: var(--text-secondary);
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.cancel-btn:hover {
+  border-color: var(--text-secondary);
+}
+
+.btn {
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: none;
+}
+
+.btn.secondary {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-primary);
+}
+
+.btn.secondary:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.btn.text {
+  background: transparent;
+  color: var(--text-secondary);
+  padding: 0.25rem 0.5rem;
+}
+
+.btn.text:hover {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.btn.danger {
+  color: #ef4444;
+}
+
+.btn.danger:hover {
+  background: rgba(239, 68, 68, 0.1);
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* -----------------------------------------------------------------------------
+   Textarea Styles
+   ----------------------------------------------------------------------------- */
+
+textarea {
+  resize: vertical;
+  background: var(--input-bg);
+  border: 1px solid var(--input-border);
+  color: var(--text-primary);
+  border-radius: 8px;
+  padding: 0.75rem;
+}
+
+textarea.invalid {
+  border-color: var(--danger);
+  background: rgba(239, 68, 68, 0.1);
+  color: var(--text-primary);
+}
+
+/* -----------------------------------------------------------------------------
+   Validation Styles
+   ----------------------------------------------------------------------------- */
+
+.validation-error {
+  color: var(--text-primary);
+  font-size: 0.8rem;
+  margin-top: 0.5rem;
+  padding: 0.5rem;
+  background: rgba(239, 68, 68, 0.15);
+  border-radius: 4px;
+  border-left: 3px solid var(--danger);
+}
+
+/* -----------------------------------------------------------------------------
+   Common Section Styles
+   ----------------------------------------------------------------------------- */
+
+.section-description {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  margin-bottom: 1rem;
+}
+
+.empty-state {
+  color: var(--text-secondary);
+  font-style: italic;
+  text-align: center;
+  padding: 1rem;
+}
+
+/* -----------------------------------------------------------------------------
+   Form Styles (SchedulesSection)
+   ----------------------------------------------------------------------------- */
+
+.modern-form {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--card-border);
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.frequency-group {
+  grid-column: span 2;
+}
+
+.time-group {
+  justify-content: flex-start;
+}
+
+.modern-select {
+  padding: 0.5rem;
+  border: 1px solid var(--input-border);
+  border-radius: 6px;
+  background-color: var(--input-bg);
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  width: 100%;
+  min-width: 0;
+}
+
+.time-select {
+  width: 60px;
+  text-align: center;
+}
+
+.time-separator {
+  font-weight: bold;
+  color: var(--text-secondary);
+}
+
+.timezone-select {
+  min-width: 120px;
+}
+
+/* -----------------------------------------------------------------------------
+   Read It Later List Styles
+   ----------------------------------------------------------------------------- */
+
+.ril-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+.ril-add-form {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.ril-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.ril-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 8px;
+  border: 1px solid transparent;
+}
+
+.ril-item.read {
+  opacity: 0.6;
+}
+
+.ril-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.ril-title {
+  font-weight: 500;
+  margin-bottom: 0.25rem;
+  word-break: break-all;
+}
+
+.ril-meta {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.ril-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.ril-empty {
+  text-align: center;
+  color: var(--text-secondary);
+  padding: 2rem;
+}
+
+/* -----------------------------------------------------------------------------
+   Tab Navigation Styles
+   ----------------------------------------------------------------------------- */
+
+.tabs {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 2rem;
+  border-bottom: 1px solid var(--card-border);
+  padding-bottom: 1px;
+}
+
+.tab-btn {
+  background: transparent;
+  color: var(--text-secondary);
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: 500;
+  transition: all 0.2s;
+  border-radius: 8px 8px 0 0;
+}
+
+.tab-btn:hover {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.tab-btn.active {
+  color: var(--accent-blue);
+  border-bottom-color: var(--accent-blue);
+  background: rgba(59, 130, 246, 0.1);
+}
+
+/* -----------------------------------------------------------------------------
+   Login Overlay Styles
+   ----------------------------------------------------------------------------- */
+
+#login-box {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 16px;
+  padding: 2rem;
+  max-width: 400px;
+  width: 90%;
+  text-align: center;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+}
+
+#login-box h2 {
+  margin-bottom: 1.5rem;
+}
+
+#login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+/* -----------------------------------------------------------------------------
+   Popup Button Styles
+   ----------------------------------------------------------------------------- */
+
+.popup-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.popup-btn.secondary {
+  background: #555;
+  color: white;
+}
+
+.popup-btn.primary {
+  background: var(--accent-blue);
+  color: white;
+}
+
+/* -----------------------------------------------------------------------------
+   Configuration Styles (GeneralConfigSection)
+   ----------------------------------------------------------------------------- */
+
+.config-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.form-group {
+  margin-bottom: 0.5rem;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 0.5rem;
+  color: var(--text-secondary);
+}
+
+.config-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.config-message {
+  font-size: 0.9rem;
+  color: var(--accent-green);
+}
+
+.config-message.error {
+  color: var(--danger);
+}
+
+@media (max-width: 600px) {
+  .config-grid {
+    grid-template-columns: 1fr;
+  }
+}

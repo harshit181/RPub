@@ -109,28 +109,28 @@
 </script>
 
 <div class="card">
-    <div class="header">
+    <div class="ril-header">
         <h2>Read It Later</h2>
         <button class="add-btn-modern" on:click={deliverNow} disabled={delivering}>
             {delivering ? "Delivering..." : "Deliver it now"}
         </button>
     </div>
 
-    <div class="add-form">
+    <div class="ril-add-form">
         <input type="text" placeholder="URL" bind:value={url} />
         <button class="btn secondary" on:click={addArticle} disabled={loading || !url}>
             {loading ? "Adding..." : "Add"}
         </button>
     </div>
 
-    <div class="list">
+    <div class="ril-list">
         {#each articles as article}
-            <div class="item {article.read ? 'read' : ''}">
-                <div class="info">
-                    <div class="title">{article.url}</div>
-                    <div class="meta">{new Date(article.created_at).toLocaleString()}</div>
+            <div class="ril-item {article.read ? 'read' : ''}">
+                <div class="ril-info">
+                    <div class="ril-title">{article.url}</div>
+                    <div class="ril-meta">{new Date(article.created_at).toLocaleString()}</div>
                 </div>
-                <div class="actions">
+                <div class="ril-actions">
                     <button class="btn text" on:click={() => toggleRead(article.id, article.read)}>
                         {article.read ? "Mark Unread" : "Mark Read"}
                     </button>
@@ -141,134 +141,7 @@
             </div>
         {/each}
         {#if articles.length === 0}
-            <div class="empty">No articles saved.</div>
+            <div class="ril-empty">No articles saved.</div>
         {/if}
     </div>
 </div>
-
-<style>
-    .card {
-        background: var(--card-bg);
-        border: 1px solid var(--card-border);
-        border-radius: 12px;
-        padding: 1.5rem;
-    }
-
-    .header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 1.5rem;
-    }
-
-    h2 {
-        margin: 0;
-        font-size: 1.25rem;
-        font-weight: 600;
-    }
-
-    .add-form {
-        display: flex;
-        gap: 0.5rem;
-        margin-bottom: 1.5rem;
-    }
-
-    input {
-        flex: 1;
-        background: rgba(255, 255, 255, 0.05);
-        border: 1px solid var(--card-border);
-        border-radius: 6px;
-        padding: 0.5rem 0.75rem;
-        color: var(--text-primary);
-    }
-
-    .list {
-        display: flex;
-        flex-direction: column;
-        gap: 0.5rem;
-    }
-
-    .item {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 0.75rem;
-        background: rgba(255, 255, 255, 0.02);
-        border-radius: 8px;
-        border: 1px solid transparent;
-    }
-
-    .item.read {
-        opacity: 0.6;
-    }
-
-    .info {
-        flex: 1;
-        min-width: 0;
-    }
-
-    .title {
-        font-weight: 500;
-        margin-bottom: 0.25rem;
-        word-break: break-all;
-    }
-
-    .meta {
-        font-size: 0.85rem;
-        color: var(--text-secondary);
-    }
-
-    .actions {
-        display: flex;
-        gap: 0.5rem;
-    }
-
-    .btn {
-        padding: 0.5rem 1rem;
-        border-radius: 6px;
-        font-weight: 500;
-        cursor: pointer;
-        transition: all 0.2s;
-        border: none;
-    }
-
-    
-    .btn.secondary {
-        background: rgba(255, 255, 255, 0.1);
-        color: var(--text-primary);
-    }
-
-    .btn.secondary:hover {
-        background: rgba(255, 255, 255, 0.15);
-    }
-
-    .btn.text {
-        background: transparent;
-        color: var(--text-secondary);
-        padding: 0.25rem 0.5rem;
-    }
-
-    .btn.text:hover {
-        color: var(--text-primary);
-        background: rgba(255, 255, 255, 0.05);
-    }
-
-    .btn.danger {
-        color: #ef4444;
-    }
-
-    .btn.danger:hover {
-        background: rgba(239, 68, 68, 0.1);
-    }
-
-    .empty {
-        text-align: center;
-        color: var(--text-secondary);
-        padding: 2rem;
-    }
-
-    button:disabled {
-        opacity: 0.5;
-        cursor: not-allowed;
-    }
-</style>

@@ -10,7 +10,7 @@ pub struct Feed {
     pub name: Option<String>,
     #[serde(default)]
     pub concurrency_limit: usize,
-    pub feed_processor: FeedProcessor,
+    pub feed_processor: ContentProcessor,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -119,6 +119,7 @@ pub enum ProcessorType {
     Default = 1,
     DomSmoothie = 2,
     Custom = 3,
+    TextOnly = 4,
 }
 
 impl Default for ProcessorType {
@@ -132,6 +133,7 @@ impl ProcessorType {
         match value {
             2 => ProcessorType::DomSmoothie,
             3 => ProcessorType::Custom,
+            4 => ProcessorType::TextOnly,
             _ => ProcessorType::Default,
         }
     }
@@ -142,8 +144,8 @@ impl ProcessorType {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct FeedProcessor {
-    pub feed_id: i64,
+pub struct ContentProcessor {
+    pub id: Option<i64>,
     pub processor: ProcessorType,
     pub custom_config: Option<String>,
 }
@@ -169,4 +171,20 @@ pub struct CustomExtractorConfig {
     pub discard: Vec<String>,
     #[serde(default)]
     pub output_mode: OutputMode,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct DomainOverride {
+    pub id: Option<i64>,
+    pub domain: String,
+    pub processor: ProcessorType,
+    pub custom_config: Option<String>,
+    pub created_at: String,
+}
+
+#[derive(Deserialize)]
+pub struct AddDomainOverrideRequest {
+    pub domain: String,
+    pub processor: ProcessorType,
+    pub custom_config: Option<String>,
 }

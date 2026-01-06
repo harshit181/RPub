@@ -1,7 +1,29 @@
-use crate::models::{CustomExtractorConfig, FeedProcessor, OutputMode, ProcessorType};
+use crate::models::{CustomExtractorConfig, ContentProcessor, OutputMode, ProcessorType};
+use arc_swap::ArcSwap;
 use dom_query::Document;
 use dom_smoothie::{CandidateSelectMode, Config, TextMode};
 use reqwest::Client;
+use std::collections::HashMap;
+use std::sync::{Arc, OnceLock};
+
+static DOMAIN_OVERRIDES: OnceLock<ArcSwap<HashMap<String, Arc<ContentProcessor>>>> = OnceLock::new();
+
+pub fn refresh_domain_overrides(overrides: Vec<(String, ContentProcessor)>) {
+    let map: HashMap<String, Arc<ContentProcessor>> = overrides
+        .into_iter()
+        .map(|(k, v)| (k, Arc::new(v)))
+        .collect();
+    
+    match DOMAIN_OVERRIDES.get() {
+        Some(swap) => swap.store(Arc::new(map)),
+        None => { let _ = DOMAIN_OVERRIDES.set(ArcSwap::from_pointee(map)); }
+    }
+}
+
+pub fn get_domain_override(url: &str) -> Option<Arc<ContentProcessor>> {
+    let domain = extract_domain(url)?;
+    DOMAIN_OVERRIDES.get()?.load().get(&domain).cloned()
+}
 
 pub trait ContentExtractor: Send + Sync {
     fn extract(&self, html: &str, url: &str) -> anyhow::Result<(String, String)>;
@@ -37,6 +59,30 @@ impl ContentExtractor for DomSmoothieExtractor {
             .parse()
             .map_err(|e| anyhow::anyhow!("DomSmoothie error: {:?}", e))?;
         Ok((extracted.title, extracted.content.to_string()))
+    }
+}
+
+pub struct TextOnlyExtractor;
+
+impl ContentExtractor for TextOnlyExtractor {
+    fn extract(&self, html: &str, url: &str) -> anyhow::Result<(String, String)> {
+        let cfg = Config {
+            text_mode: TextMode::Markdown,
+            candidate_select_mode: CandidateSelectMode::DomSmoothie,
+            ..Default::default()
+        };
+        let mut readability = dom_smoothie::Readability::new(html, Some(url), Some(cfg))?;
+        let extracted = readability
+            .parse()
+            .map_err(|e| anyhow::anyhow!("TextOnly error: {:?}", e))?;
+        
+        let content_html = extracted.content.to_string();
+        let doc = Document::from(content_html.as_str());
+        if let Some(images) = doc.try_select("img") {
+            images.remove();
+        }
+        
+        Ok((extracted.title, doc.html().to_string()))
     }
 }
 
@@ -91,12 +137,12 @@ impl ContentExtractor for CustomExtractor {
         Ok((title, content))
     }
 }
-
-pub fn create_extractor(processor: Option<&FeedProcessor>) -> anyhow::Result<Box<dyn ContentExtractor>> {
+pub fn create_extractor(processor: Option<&ContentProcessor>) -> anyhow::Result<Box<dyn ContentExtractor>> {
     let processor_type = processor.map(|p| p.processor).unwrap_or(ProcessorType::Default);
 
     match processor_type {
         ProcessorType::DomSmoothie => Ok(Box::new(DomSmoothieExtractor)),
+        ProcessorType::TextOnly => Ok(Box::new(TextOnlyExtractor)),
         ProcessorType::Custom => {
             let custom_config = processor
                 .and_then(|p| p.custom_config.as_ref())
@@ -107,16 +153,27 @@ pub fn create_extractor(processor: Option<&FeedProcessor>) -> anyhow::Result<Box
     }
 }
 
+pub fn extract_domain(url: &str) -> Option<String> {
+    url::Url::parse(url)
+        .ok()
+        .and_then(|u| u.host_str().map(|h| h.to_lowercase()))
+}
+
 pub async fn fetch_full_content(client: &Client, url: &str) -> anyhow::Result<(String, String)> {
     fetch_full_content_with_processor(client, url, None).await
 }
-
 pub async fn fetch_full_content_with_processor(
     client: &Client,
     url: &str,
-    processor: Option<&FeedProcessor>,
+    processor: Option<&ContentProcessor>,
 ) -> anyhow::Result<(String, String)> {
     let html = client.get(url).send().await?.text().await?;
-    let extractor = create_extractor(processor)?;
+
+    let extractor = if let Some(content_processor) = get_domain_override(url) {
+        create_extractor(Some(&*content_processor))?
+    } else {
+        create_extractor(processor)?
+    };
+    
     extractor.extract(&html, url)
 }

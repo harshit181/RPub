@@ -76,11 +76,49 @@ pub fn init_db(path: &str) -> rusqlite::Result<Connection> {
     conn.execute(
         "CREATE TABLE IF NOT EXISTS feed_processor (
             feed_id INTEGER PRIMARY KEY,
-            processor INTEGER NOT NULL DEFAULT 1 CHECK (processor IN (1, 2, 3)),
+            processor INTEGER NOT NULL DEFAULT 1,
             custom_config TEXT,
             FOREIGN KEY (feed_id) REFERENCES feeds(id) ON DELETE CASCADE
         )",
         [],
     )?;
+
+    // Migration: in case sqllite db has check constraint from previous version (will delete this in future)
+    let has_check_constraint: bool = conn
+        .query_row(
+            "SELECT sql FROM sqlite_master WHERE type='table' AND name='feed_processor'",
+            [],
+            |row| {
+                let sql: String = row.get(0)?;
+                Ok(sql.contains("CHECK"))
+            },
+        )
+        .unwrap_or(false);
+
+    if has_check_constraint {
+        conn.execute_batch(
+            "CREATE TABLE feed_processor_new (
+                feed_id INTEGER PRIMARY KEY,
+                processor INTEGER NOT NULL DEFAULT 1,
+                custom_config TEXT,
+                FOREIGN KEY (feed_id) REFERENCES feeds(id) ON DELETE CASCADE
+            );
+            INSERT INTO feed_processor_new SELECT * FROM feed_processor;
+            DROP TABLE feed_processor;
+            ALTER TABLE feed_processor_new RENAME TO feed_processor;",
+        )?;
+    }
+
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS domain_override (
+            id INTEGER PRIMARY KEY,
+            domain TEXT NOT NULL UNIQUE,
+            processor INTEGER NOT NULL,
+            custom_config TEXT,
+            created_at TEXT NOT NULL
+        )",
+        [],
+    )?;
+
     Ok(conn)
 }

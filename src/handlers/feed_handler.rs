@@ -4,7 +4,7 @@ use axum::http::StatusCode;
 use axum::Json;
 use serde::Deserialize;
 use crate::db;
-use crate::models::{AddFeedRequest, AppState, Feed, FeedProcessor, ProcessorType};
+use crate::models::{AddFeedRequest, AppState, Feed, ContentProcessor, ProcessorType};
 
 pub async fn list_feeds(
     State(state): State<Arc<AppState>>,
@@ -65,7 +65,7 @@ pub async fn delete_feed(
 pub async fn get_feed_processor(
     State(state): State<Arc<AppState>>,
     Path(id): Path<i64>,
-) -> Result<Json<Option<FeedProcessor>>, (StatusCode, String)> {
+) -> Result<Json<Option<ContentProcessor>>, (StatusCode, String)> {
     let db = state.db.lock().map_err(|_| {
         (
             StatusCode::INTERNAL_SERVER_ERROR,

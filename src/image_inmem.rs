@@ -29,6 +29,7 @@ pub async fn process_images(
         .unwrap_or_else(|_| Client::new());
 
     let mut matches = Vec::new();
+    //TODO: compare performance regex vs dom_query
     for cap in IMG_REGEX.captures_iter(html) {
         if let Some(src) = cap.get(1) {
             matches.push(src.as_str().to_string());

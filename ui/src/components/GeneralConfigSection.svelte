@@ -78,69 +78,14 @@
         </div>
     </div>
 
-    <div class="actions">
+    <div class="config-actions">
         <button on:click={saveConfig} disabled={loading} class="add-btn-modern">
             {loading ? "Saving..." : "Save Configuration"}
         </button>
         {#if message}
-            <span class="message" class:error={message.includes("Failed")}
+            <span class="config-message" class:error={message.includes("Failed")}
                 >{message}</span
             >
         {/if}
     </div>
 </section>
-
-<style>
-    .config-grid {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 1.5rem;
-        margin-bottom: 0.5rem;
-    }
-
-    .form-group {
-        margin-bottom: 0.5rem;
-    }
-
-    @media (max-width: 600px) {
-        .config-grid {
-            grid-template-columns: 1fr;
-        }
-    }
-
-    label {
-        display: block;
-        margin-bottom: 0.5rem;
-        color: var(--text-secondary);
-    }
-
-    .input-group {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-    }
-
-    input {
-        width: 100%;
-        padding: 0.75rem;
-        border-radius: 6px;
-        border: 1px solid var(--input-border);
-        background: var(--input-bg);
-        color: var(--text-primary);
-    }
-
-    .actions {
-        display: flex;
-        align-items: center;
-        gap: 1rem;
-    }
-
-    .message {
-        font-size: 0.9rem;
-        color: var(--success);
-    }
-
-    .message.error {
-        color: var(--error);
-    }
-</style>

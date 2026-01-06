@@ -317,6 +317,7 @@
             <select bind:value={processor}>
                 <option value="default">Default</option>
                 <option value="dom_smoothie">DomSmoothie</option>
+                <option value="text_only">Text Only (No Images)</option>
                 <option value="custom">Custom (Experimental)</option>
             </select>
             <button type="submit" class="add-btn" disabled={!isAddFormValid}> Add Feed </button>
@@ -353,6 +354,7 @@ output_mode: html"
                 <select bind:value={editProcessor}>
                     <option value="default">Default</option>
                     <option value="dom_smoothie">DomSmoothie</option>
+                    <option value="text_only">Text Only (No Images)</option>
                     <option value="custom">Custom (Experimental)</option>
                 </select>
             </div>
@@ -384,117 +386,3 @@ output_mode: html"
         </div>
     </div>
 {/if}
-
-<style>
-    .edit-btn {
-        background: transparent;
-        color: var(--text-secondary);
-        border: none;
-        padding: 4px 8px;
-        border-radius: 4px;
-        cursor: pointer;
-        font-size: 1rem;
-    }
-    .edit-btn:hover {
-        background: rgba(59, 130, 246, 0.1);
-        color: var(--accent-blue);
-    }
-    
-    .modal-overlay {
-        position: fixed;
-        inset: 0;
-        background: rgba(0, 0, 0, 0.7);
-        backdrop-filter: blur(5px);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        z-index: 100;
-    }
-    
-    .modal-box {
-        background: var(--card-bg);
-        border: 1px solid var(--card-border);
-        border-radius: 16px;
-        padding: 1.5rem;
-        max-width: 500px;
-        width: 90%;
-        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
-    }
-    
-    .modal-box h3 {
-        margin: 0 0 1rem 0;
-        color: var(--text-primary);
-        font-size: 1.1rem;
-    }
-    
-    .modal-field {
-        margin-bottom: 1rem;
-    }
-    
-    .modal-field label {
-        display: block;
-        margin-bottom: 0.5rem;
-        color: var(--text-secondary);
-        font-size: 0.9rem;
-    }
-    
-    .modal-field select,
-    .modal-field textarea {
-        width: 100%;
-        background: var(--input-bg);
-        border: 1px solid var(--input-border);
-        color: var(--text-primary);
-        padding: 0.75rem;
-        border-radius: 8px;
-    }
-    
-    .modal-actions {
-        display: flex;
-        gap: 10px;
-        justify-content: flex-end;
-        margin-top: 1.5rem;
-    }
-    
-    .cancel-btn {
-        background: transparent;
-        border: 1px solid var(--card-border);
-        color: var(--text-secondary);
-        padding: 0.5rem 1rem;
-        border-radius: 6px;
-        cursor: pointer;
-    }
-    
-    .cancel-btn:hover {
-        border-color: var(--text-secondary);
-    }
-    
-    textarea {
-        resize: vertical;
-        background: var(--input-bg);
-        border: 1px solid var(--input-border);
-        color: var(--text-primary);
-        border-radius: 8px;
-        padding: 0.75rem;
-    }
-    
-    textarea.invalid {
-        border-color: var(--danger);
-        background: rgba(239, 68, 68, 0.1);
-        color: var(--text-primary);
-    }
-    
-    .validation-error {
-        color: var(--text-primary);
-        font-size: 0.8rem;
-        margin-top: 0.5rem;
-        padding: 0.5rem;
-        background: rgba(239, 68, 68, 0.15);
-        border-radius: 4px;
-        border-left: 3px solid var(--danger);
-    }
-    
-    button:disabled {
-        opacity: 0.5;
-        cursor: not-allowed;
-    }
-</style>
