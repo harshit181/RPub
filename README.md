@@ -23,7 +23,7 @@ It also serves an OPDS feed, making it easy to download the generated EPUBs dire
 
 ## Features
 
-- **Read It Later:** Save articles to read later. It will created different EPUB for read later articles and marked as read once epub is generated.
+- **Read It Later:** Save articles to read later. It will created different EPUB for read later articles and marked as read once epub is generated.(Can be saved via web UI or post request via IOS shortcut or Android app [http shortcut](https://play.google.com/store/apps/details?id=ch.rmy.android.http_shortcuts&hl=en_IN)
 - **RSS/Atom Parsing:** Automatically fetches and parses content from your configured feeds.
 - **EPUB Generation:** Compiles articles into a well-formatted EPUB ebook.
 - **Image Optimization:** Downloads and processes images for optimal e-reader viewing (grayscale, resizing).
