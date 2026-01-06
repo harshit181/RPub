@@ -181,6 +181,21 @@ output_mode: html
 - `discard` (optional): Array of CSS selectors for elements to remove from the extracted content.
 - `output_mode` (optional): Output format - `html` (default) or `text`.   
 
+#### Domain Override
+
+Domain Override allows you to set a custom content processor for a specific domain. This applies to both RSS feed articles and Read It Later articles.
+
+**Use Case:** This is particularly useful when a feed contains links to multiple external URLs. For example:
+- **HackerNews** - Links to various external sites
+
+**Configuration:**
+1. Go to the "Domain Overrides" section in the UI.
+2. Add the domain with subdomain  (e.g., `www.example.com`, `subdomain.example.com`).
+3. Select the processor type (Default, DomSmoothie, TextOnly, or Custom).
+4. Optionally provide a custom configuration (YAML format) for the Custom processor.
+
+When processing an article, rsspub will check if a domain override exists for the article's URL and use the configured processor instead of the feed's default.
+
      
 <s>    
 ### Building with Optimization (Optional) 
