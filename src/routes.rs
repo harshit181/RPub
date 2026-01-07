@@ -12,7 +12,10 @@ use tracing::{info, warn};
 use crate::handlers::{auth_handler, config_handler, domain_override_handler, download_handler, email_handler, feed_handler, read_it_later_handler, schedule_handler};
 
 pub fn create_router(state: Arc<AppState>) -> Router {
-    let public_routes = Router::new().route("/opds", get(handlers::opds_handler));
+    let public_routes = Router::new()
+        .route("/opds", get(handlers::opds_handler))
+        .route("/downloads/latest_rss.epub", get(download_handler::download_latest_rss))
+        .route("/downloads/latest_readlater.epub", get(download_handler::download_latest_readlater));
 
     let protected_routes = Router::new()
         .route("/generate", post(download_handler::generate_epub_adhoc))
