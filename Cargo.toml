@@ -6,7 +6,7 @@ edition = "2024"
 [dependencies]
 feed-rs = "2.3.1"
 reqwest = { version = "0.12.28", features = ["json", "blocking", "cookies", "rustls-tls", "charset"],default-features = false }
-tokio = { version = "1.48", features = ["full"] }
+tokio = { version = "1.49", features = ["full"] }
 epub-builder = "0.8.2"
 chrono = { version = "0.4.42", features = ["serde"] }
 chrono-tz = { version = "0.10.4", features = ["serde"] }
