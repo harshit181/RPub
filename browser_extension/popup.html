@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RSSpub bookmark it</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+    <div class="popup-container">
+        <h2>RSSpub bookmark it</h2>
+        <div id="host-container" class="host-display">
+            <span class="host-label">Host:</span>
+            <span id="configured-host">Not configured</span>
+        </div>
+        <div id="status-container">
+            <p id="current-url" class="url-display">Loading...</p>
+        </div>
+        <button id="send-btn" class="btn primary">Send URL</button>
+        <div id="message" class="message"></div>
+        <div class="footer">
+            <a href="options.html" target="_blank" id="settings-link">⚙️ Settings</a>
+        </div>
+    </div>
+    <script src="popup.js"></script>
+</body>
+
+</html>

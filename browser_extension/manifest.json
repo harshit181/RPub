@@ -1,0 +1,33 @@
+{
+    "manifest_version": 3,
+    "name": "RSSpub bookmark it",
+    "version": "1.0.0",
+    "description": "Send current page URL to a configured endpoint",
+    "permissions": [
+        "activeTab",
+        "storage"
+    ],
+    "action": {
+        "default_popup": "popup.html",
+        "default_icon": {
+            "16": "icons/icon16.png",
+            "48": "icons/icon48.png",
+            "128": "icons/icon128.png"
+        }
+    },
+    "options_ui": {
+        "page": "options.html",
+        "open_in_tab": true
+    },
+    "icons": {
+        "16": "icons/icon16.png",
+        "48": "icons/icon48.png",
+        "128": "icons/icon128.png"
+    },
+    "browser_specific_settings": {
+        "gecko": {
+            "id": "rsspub-bookmark-it@example.com",
+            "strict_min_version": "109.0"
+        }
+    }
+}
