@@ -9,4 +9,5 @@ services:
       - RUST_LOG=info,html5ever=error
       - RPUB_USERNAME=${RPUB_USERNAME}
       - RPUB_PASSWORD=${RPUB_PASSWORD}
+      - SECURE_OPDS=${SECURE_OPDS}
     restart: unless-stopped
